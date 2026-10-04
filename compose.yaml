@@ -1,0 +1,101 @@
+name: fleet-delivery
+services:
+  postgres:
+    image: postgis/postgis:16-3.5
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fleet_delivery}
+      POSTGRES_USER: ${POSTGRES_USER:-fleet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run scripts/dev.ps1 first}
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7.4-alpine
+    ports: ["127.0.0.1:6379:6379"]
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: ["redis-data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  minio:
+    build:
+      context: .
+      dockerfile: infra/docker/minio.Dockerfile
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-fleet_storage}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Run scripts/dev.ps1 first}
+    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
+    volumes: ["minio-data:/data"]
+  minio-init:
+    build:
+      context: .
+      dockerfile: infra/docker/mc.Dockerfile
+    depends_on: [minio]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-fleet_storage}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Run scripts/dev.ps1 first}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do sleep 2; done;
+        mc mb --ignore-existing local/fleet-pod &&
+        mc anonymous set none local/fleet-pod &&
+        mc version enable local/fleet-pod
+  traccar:
+    image: traccar/traccar:6.10-ubuntu
+    ports: ["127.0.0.1:8082:8082", "127.0.0.1:5055:5055", "127.0.0.1:5055:5055/udp"]
+    volumes:
+      - traccar-data:/opt/traccar/data
+      - traccar-logs:/opt/traccar/logs
+      - ./infra/docker/traccar.xml:/opt/traccar/conf/traccar.xml:ro
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    environment:
+      APP_ENV: local
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-fleet}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-fleet_delivery}
+      REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-fleet_storage}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_BUCKET: fleet-pod
+      TRACCAR_URL: http://traccar:8082
+      CORS_ORIGINS: '["http://localhost:3000"]'
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      minio-init: {condition: service_completed_successfully}
+      traccar: {condition: service_started}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=15)"]
+      interval: 10s
+      timeout: 20s
+      retries: 20
+      start_period: 30s
+  admin-web:
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on:
+      api: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
+  traccar-data:
+  traccar-logs:

@@ -1,0 +1,50 @@
+name: M0 foundation
+on: [push, pull_request]
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build:web
+        env: {NEXT_TELEMETRY_DISABLED: '1'}
+      - run: npm run build:mobile
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.5
+        env:
+          POSTGRES_USER: fleet_test
+          POSTGRES_PASSWORD: isolated_ci_test
+          POSTGRES_DB: fleet_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U fleet_test -d fleet_test"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://fleet_test:isolated_ci_test@localhost:5432/fleet_test
+      TEST_DATABASE_URL: postgresql+psycopg://fleet_test:isolated_ci_test@localhost:5432/fleet_test
+      APP_ENV: test
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: {version: '0.12.23'}
+      - run: uv sync --frozen --python 3.12
+      - run: uv run --frozen ruff check .
+      - run: uv run --frozen ruff format --check .
+      - run: uv run --frozen mypy app
+      - run: uv run --frozen alembic upgrade head
+      - run: uv run --frozen pytest
+      - run: uv run --frozen alembic downgrade base
+      - run: uv run --frozen alembic upgrade head

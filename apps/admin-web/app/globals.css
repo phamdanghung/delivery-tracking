@@ -1,0 +1,7 @@
+:root{font-family:Arial,sans-serif;color:#172b4d;background:#f3f6fa}
+*{box-sizing:border-box}body{margin:0}main{max-width:960px;margin:12vh auto;padding:32px}
+.eyebrow{font-size:12px;letter-spacing:2px;color:#436489;font-weight:700}
+h1{font-size:clamp(32px,5vw,52px);line-height:1.15;margin:20px 0}
+p{color:#52647c;line-height:1.7;font-size:17px;max-width:660px}
+section{margin-top:48px;padding:32px;background:white;border:1px solid #dbe4ef;border-radius:16px}
+h2{font-size:24px}.badge{display:inline-block;padding:6px 12px;border-radius:20px;background:#e9f1ff;color:#245a9c;font-size:13px}

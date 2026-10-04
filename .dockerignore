@@ -1,0 +1,11 @@
+.git
+.env
+**/node_modules
+**/.next
+**/.expo
+**/.venv
+**/__pycache__
+**/.pytest_cache
+artifacts
+*.zip
+*.docx

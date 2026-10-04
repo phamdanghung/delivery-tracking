@@ -1,0 +1,98 @@
+openapi: 3.1.0
+info:
+  title: Fleet Delivery API
+  version: 1.0.0
+servers:
+  - url: /api/v1
+paths:
+  /auth/login:
+    post:
+      summary: Đăng nhập nội bộ
+      responses:
+        '200': {description: Thành công}
+  /vehicles:
+    get:
+      summary: Danh sách xe
+      security: [{bearerAuth: []}]
+      responses: {'200': {description: OK}}
+  /vehicles/{vehicleId}/live:
+    get:
+      summary: Vị trí trực tiếp của xe từ Traccar
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: vehicleId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses: {'200': {description: OK}}
+  /deliveries:
+    post:
+      summary: Tạo đơn giao thủ công hoặc từ nội dung đã copy từ Zalo
+      security: [{bearerAuth: []}]
+      responses: {'201': {description: Đã tạo}}
+    get:
+      summary: Tìm/lọc đơn giao
+      security: [{bearerAuth: []}]
+      responses: {'200': {description: OK}}
+  /deliveries/{deliveryId}/status:
+    post:
+      summary: Chuyển trạng thái đơn; server kiểm tra state machine
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: deliveryId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200': {description: Thành công}
+        '409': {description: Chuyển trạng thái không hợp lệ}
+  /deliveries/{deliveryId}/pod/photos:
+    post:
+      summary: Khởi tạo/tải ảnh bằng chứng giao hàng
+      security: [{bearerAuth: []}]
+      responses: {'201': {description: Đã lưu}}
+  /deliveries/{deliveryId}/reschedule:
+    post:
+      summary: Hẹn giao lại sau khi giao thất bại
+      security: [{bearerAuth: []}]
+      responses: {'200': {description: Đã hẹn lại}}
+  /trips:
+    post:
+      summary: Tạo chuyến giao
+      security: [{bearerAuth: []}]
+      responses: {'201': {description: Đã tạo}}
+  /trips/{tripId}/optimize:
+    post:
+      summary: Tối ưu thứ tự giao theo đúng giờ -> ít km -> nhanh nhất
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {description: Đã tối ưu}
+        '422': {description: Có điểm không thể đáp ứng cam kết thời gian}
+  /trips/{tripId}/start:
+    post:
+      summary: Bắt đầu chuyến
+      security: [{bearerAuth: []}]
+      responses: {'200': {description: OK}}
+  /tracking-links:
+    post:
+      summary: Tạo link tracking để nhân viên copy gửi Zalo
+      security: [{bearerAuth: []}]
+      responses: {'201': {description: Đã tạo link}}
+  /public/tracking/{token}:
+    get:
+      summary: Khách xem vị trí GPS chính xác, ETA và trạng thái đơn
+      parameters:
+        - {name: token, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: OK}
+        '410': {description: Link hết hiệu lực/đã thu hồi}
+  /fuel/entries:
+    post:
+      summary: Ghi nhận lần đổ nhiên liệu và đối soát 15%
+      security: [{bearerAuth: []}]
+      responses: {'201': {description: Đã tạo}}
+  /expenses:
+    post:
+      summary: Ghi nhận chi phí chuyến
+      security: [{bearerAuth: []}]
+      responses: {'201': {description: Đã tạo}}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

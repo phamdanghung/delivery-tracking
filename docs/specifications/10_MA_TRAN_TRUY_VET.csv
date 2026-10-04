@@ -1,0 +1,24 @@
+﻿Mã nghiệp vụ,Chức năng,Milestone,API/Điểm tích hợp,Bảng dữ liệu,Kiểm thử
+GPS-01,Live tracking,M1,/vehicles/{id}/live,vehicles + Traccar,"AT-01, AT-02"
+GPS-02,ACC state,M1,/vehicles/{id}/live,Traccar position,AT-01
+GPS-03,Playback,M1,/vehicles/{id}/history,Traccar history,AT-02
+GPS-04,Odometer,M1,/vehicles/{id}/odometer,daily aggregates,AT-01
+ROUT-01,Tạo đơn,M2,/deliveries,deliveries,AT-03
+ROUT-02,Tối ưu tuyến,M3,/trips/{id}/optimize,"trips, trip_stops",AT-04
+ROUT-03,Dẫn đường,M4,client deep-link,trip_stops,AT-03
+ROUT-04,Geofence 50m,M4,status event,delivery_status_events,"AT-05, AT-06"
+ROUT-05,Phân xe/tài xế,M2,/trips,trips,"AT-03, AT-12"
+POD-01,Ảnh bằng chứng,M5,/deliveries/{id}/pod/photos,pod_photos,"AT-07, AT-08"
+POD-02,Đồng bộ văn phòng,M5,delivery detail,pod_photos/events,AT-07
+POD-03,Giao lại,M2,/deliveries/{id}/reschedule,deliveries/events,AT-09
+NOTIF-01,Tracking link,M6,/tracking-links,tracking_tokens,"AT-10, AT-11"
+NOTIF-02,ETA,M6,/public/tracking/{token},tracking cache,AT-10
+FUEL-01,Định mức,M7,/fuel/profiles,fuel_profiles,AT-13
+FUEL-02,Ước tính,M7,internal calc,fuel_entries,AT-13
+FUEL-03,Đối soát 15%,M7,/fuel/entries,fuel_entries,AT-13
+FUEL-04,Chi phí,M7,/expenses,expenses,UAT
+SAFE-03,Ngoài giờ 18:00-07:30,M7,alerts,safety_alerts,AT-14
+SAFE-04,Remote immobilization,OUT,none,none,AT-16
+ASSET-01,Tải trọng cảnh báo,M2/M3,trip validation,vehicles/trips,AT-12
+ASSET-02,Bảo dưỡng riêng xe,M7,maintenance,maintenance_rules/events,AT-15
+ASSET-03,Đăng kiểm/bảo hiểm,M7,documents,vehicle_documents,UAT
