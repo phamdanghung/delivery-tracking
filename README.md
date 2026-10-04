@@ -38,7 +38,7 @@ npx.cmd --yes npm@12.2.0 ci
 npx.cmd --yes npm@12.2.0 run dev:web
 ```
 
-App tài xế dùng React Native qua Expo theo template chính thức, không thay stack. Chạy trên thiết bị/emulator tương thích với Expo SDK trong lockfile:
+App tài xế dùng React Native qua Expo theo template chính thức, không thay stack. M0 chạy Metro chỉ trên localhost; chưa mở LAN/tunnel. Chạy trên thiết bị/emulator tương thích với Expo SDK trong lockfile:
 
 ```powershell
 npx.cmd --yes npm@12.2.0 run dev:mobile
@@ -83,6 +83,6 @@ CI chạy lint, typecheck, unit test, build web, export bundle Android/iOS, migr
 - `infra/docker`, `compose.yaml`: dev stack.
 - `docs/specifications`: toàn bộ Technical Pack được giải nén, giữ nguyên nội dung.
 - `docs/requirements`: vấn đề phát hiện và truy vết M0.
-- `docs/reports/M0_FINAL.md`: kết quả xác minh M0 hiện tại; `M0.md` lưu báo cáo ban đầu.
+- `docs/reports/M0_FINAL_REVISION.md`: kết quả xác minh mới nhất; `M0_FINAL.md` là báo cáo trước xử lý advisory/remote CI; `M0.md` lưu báo cáo ban đầu.
 
 Đọc `START_HERE_FOR_CODEX_V1.1.md` trước khi sửa source. Trước khi triển khai giao diện phải đọc toàn bộ `UX_UI_Design_Spec_V1.0/`. Tài liệu nghiệp vụ V1.1 có độ ưu tiên cao nhất; bộ UX/UI hướng dẫn điều hướng, luồng thao tác, component, design token và nghiệm thu giao diện, không thay thế hợp đồng nghiệp vụ/API/database.
