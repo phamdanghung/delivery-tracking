@@ -1,3 +1,5 @@
+> Báo cáo lịch sử trước revision. Kết quả mới nhất: [M0_FINAL_REVISION.md](M0_FINAL_REVISION.md); phân tích advisory: [M0_DEPENDENCY_SECURITY.md](M0_DEPENDENCY_SECURITY.md).
+
 # M0 FINAL
 
 Ngày: 04/10/2026. Nhánh: `codex/m0-foundation`, tiếp nối M0 tại commit `e028212`.
