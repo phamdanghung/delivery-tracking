@@ -8,7 +8,7 @@ A = package có code runtime của sản phẩm, nhưng advisory cụ thể lan 
 
 | Package | Mức | Vai trò | Trực tiếp / transitive | Advisory gốc |
 |---|---|---|---|---|
-| @expo/cli | high | B | C: transitive | node-forge, uuid, braces |
+| @expo/cli | high | B; A: runtime module-loader helper | C: transitive | node-forge, uuid, braces |
 | @expo/code-signing-certificates | high | B | C: transitive | node-forge |
 | @expo/config | moderate | B | C: transitive | uuid |
 | @expo/config-plugins | moderate | B | C: transitive | uuid |
@@ -90,7 +90,7 @@ Danh sách từ lockfile trước sửa, resolve theo vị trí node_modules, de
 
 ## Bằng chứng runtime và rủi ro thực tế
 
-- Mobile: Expo runtime entry src/Expo.ts không import CLI; CLI là bin riêng. Các bundle Android/iOS thực sự được export kèm source map; scripts/verify_mobile_surface.mjs xác minh không chứa braces, node-forge, uuid, xcode, micromatch hoặc Expo CLI/certificates. Kết quả cụ thể ghi trong M0_FINAL_REVISION.md. Không cài expo-updates hoặc cấu hình OTA code-signing trong app M0.
+- Mobile: Expo runtime entry src/Expo.ts không import CLI; CLI là bin riêng. Các bundle Android/iOS thực sự được export kèm source map; scripts/verify_mobile_surface.mjs xác minh không chứa braces, node-forge, uuid, xcode, micromatch hoặc Expo certificates. Expo có nhúng duy nhất @expo/cli/build/metro-require/require.js làm module-loader runtime: file này không import các primitive glob/crypto dễ bị tấn công. Gate kiểm tra riêng file này và vẫn fail nếu có CLI source khác. Run CI đầu tiên phát hiện helper này; đã sửa phân loại dựa trên source, không lọc audit. Kết quả cụ thể ghi trong M0_FINAL_REVISION.md. Không cài expo-updates hoặc cấu hình OTA code-signing trong app M0.
 - Web: 5 Next.js server trace (*.nft.json) trước sửa không chứa package gốc advisory. Docker web hiện cài workspace tooling trong node_modules, nên không được tuyên bố package đã bị loại khỏi image. Route M0 là skeleton tĩnh, không nhận glob/certificate từ khách; trace sau rebuild phải kiểm tra lại. Chứng cứ này có phạm vi các route và bundle M0 hiện tại, không đảm bảo mọi code tương lai.
 - Backend: Python, không import npm graph. Stack PostgreSQL/Redis/MinIO/Traccar không chạy các package npm này.
 - Đánh giá: không thấy đường input khách hàng tới 2 primitive dễ bị tấn công trong runtime M0 đã export/build. Rủi ro trực tiếp runtime M0 thấp theo bằng chứng hiện có; rủi ro tooling vẫn còn và mức advisory high được giữ nguyên. Không chấp nhận tài liệu/package/cert/config không tin cậy; không expose Metro ra mạng; Compose bind loopback. Chưa chứng nhận production.

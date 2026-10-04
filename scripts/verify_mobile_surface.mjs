@@ -14,12 +14,19 @@ function visit(dir) {
 }
 visit(root);
 assert.ok(maps.length >= 2, 'Android and iOS source maps are required');
-const forbidden = /(?:^|\/)node_modules\/(?:braces|node-forge|uuid|xcode|micromatch|@expo\/cli|@expo\/code-signing-certificates)\//;
+const forbidden = /(?:^|\/)node_modules\/(?:braces|node-forge|uuid|xcode|micromatch|@expo\/code-signing-certificates)\//;
 const result = maps.map(file => {
   const map = JSON.parse(fs.readFileSync(file, 'utf8'));
   assert.ok(map.sources.length > 100, 'Source map must describe the real application bundle');
   const matches = map.sources.filter(source => forbidden.test(source.replaceAll('\\', '/')));
   assert.deepEqual(matches, [], `Tooling entered runtime bundle: ${file}`);
-  return {file, sources: map.sources.length, advisoryPackageSources: matches};
+  // Expo deliberately embeds this module loader from its CLI package. It is
+  // runtime code, but imports none of the vulnerable glob/crypto packages.
+  const cliSources = map.sources.filter(source => source.replaceAll('\\', '/').includes('/node_modules/@expo/cli/'));
+  for (const source of cliSources) {
+    assert.ok(source.replaceAll('\\', '/').endsWith('/@expo/cli/build/metro-require/require.js'),
+      `Unexpected CLI code in runtime bundle: ${source}`);
+  }
+  return {file, sources: map.sources.length, advisoryPackageSources: matches, expoRuntimeLoaderSources: cliSources};
 });
 console.log(JSON.stringify(result, null, 2));
