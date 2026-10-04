@@ -52,6 +52,14 @@ Các file này là hướng dẫn chi tiết để triển khai source code.
 
 ---
 
+## Mức 4 — Bộ UX/UI Design Spec V1.0
+Đọc toàn bộ thư mục `UX_UI_Design_Spec_V1.0/` trước khi triển khai giao diện Web, App tài xế hoặc Tracking khách.
+
+Bộ UX/UI là nguồn sự thật cho: cấu trúc điều hướng, user flow, bố cục màn hình, trạng thái hiển thị, component, design token và tiêu chí nghiệm thu giao diện.
+
+Nếu UX/UI mâu thuẫn với nghiệp vụ V1.1 hoặc hợp đồng kỹ thuật đã khóa, **không được tự đổi nghiệp vụ/API**; phải ưu tiên tài liệu cấp cao hơn và báo lại điểm mâu thuẫn.
+
+
 # 2. NGUYÊN TẮC BẮT BUỘC
 
 Codex phải tuân thủ các nguyên tắc sau:

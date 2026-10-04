@@ -9,8 +9,8 @@ from sqlalchemy.exc import IntegrityError
 def database():
     url = os.getenv("TEST_DATABASE_URL")
     if not url:
-        pytest.skip("TEST_DATABASE_URL required for real PostGIS integration tests")
-    engine = create_engine(url)
+        pytest.fail("TEST_DATABASE_URL required for mandatory real PostGIS integration tests")
+    engine = create_engine(url, connect_args={"connect_timeout": 5})
     yield engine
     engine.dispose()
 

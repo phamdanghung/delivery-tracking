@@ -1,6 +1,12 @@
 {
-  "name": "fleet-delivery", "version": "0.0.0", "private": true,
-  "workspaces": ["apps/admin-web", "apps/driver-mobile", "packages/shared"],
+  "name": "fleet-delivery",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/admin-web",
+    "apps/driver-mobile",
+    "packages/shared"
+  ],
   "scripts": {
     "dev:web": "npm run dev --workspace @fleet/admin-web",
     "dev:mobile": "npm run start --workspace @fleet/driver-mobile",
@@ -10,5 +16,14 @@
     "build:web": "npm run build --workspace @fleet/admin-web",
     "build:mobile": "npm run export --workspace @fleet/driver-mobile"
   },
-  "engines": {"node": ">=22.13.0"}
+  "engines": {
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0",
+    "npm": "12.2.x"
+  },
+  "overrides": {
+    "xcode": {
+      "uuid": "11.1.1"
+    }
+  },
+  "packageManager": "npm@12.2.0"
 }

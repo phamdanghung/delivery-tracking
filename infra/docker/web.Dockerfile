@@ -5,7 +5,7 @@ COPY package.json package-lock.json ./
 COPY apps/admin-web/package.json apps/admin-web/package.json
 COPY apps/driver-mobile/package.json apps/driver-mobile/package.json
 COPY packages/shared/package.json packages/shared/package.json
-RUN npm ci
+RUN npm install --global npm@12.2.0 && npm ci
 COPY apps/admin-web apps/admin-web
 COPY packages/shared packages/shared
 RUN npm run build:web && chown -R node:node /workspace/apps/admin-web/.next

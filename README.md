@@ -10,7 +10,7 @@ Yêu cầu Docker Desktop với Linux Engine đang hoạt động. Từ thư m�
 ./scripts/dev.ps1
 ```
 
-Lệnh tạo `.env` với mật khẩu ngẫu nhiên nếu chưa có, build image, chạy migration và chờ dịch vụ sẵn sàng. Không ghi đè `.env` đã tồn tại.
+Lệnh tạo `.env` với mật khẩu ngẫu nhiên nếu chưa có, build image tuần tự, chạy migration và chờ dịch vụ sẵn sàng. Không ghi đè `.env` đã tồn tại. PostgreSQL local dùng `127.0.0.1:55433`, cấu hình qua `POSTGRES_PORT`, để tránh cổng 5432 đang được service khác sử dụng.
 
 - Web: http://localhost:3000
 - API docs: http://localhost:8000/docs
@@ -21,7 +21,7 @@ Lệnh tạo `.env` với mật khẩu ngẫu nhiên nếu chưa có, build imag
 
 Các cổng Docker chỉ bind loopback. Đây là cấu hình dev; chưa dùng cho production hoặc thiết bị GPS thật. Bucket `fleet-pod` private và bật versioning. Traccar lưu GPS trong volume H2 riêng của môi trường local; database nghiệp vụ dùng PostgreSQL 16/PostGIS. Không reset Docker hoặc xóa volume để xử lý lỗi khởi động.
 
-MinIO và mc build từ source chính thức đã cố định release/SHA vì các image public được kiểm tra không tải được. Lần build đầu có thể lâu do tải Go modules. Dockerfile này chưa được build xác minh tại máy hiện tại vì Docker Engine lỗi; xem báo cáo M0 trước khi nghiệm thu.
+MinIO và mc build từ source chính thức đã cố định release/SHA vì các image public được kiểm tra không tải được. Lần build đầu có thể lâu do tải Go modules. Build Go giới hạn hai tác vụ và dùng cache; script build tuần tự để phù hợp máy có ít RAM. Kết quả xác minh thực tế được ghi trong `docs/reports/M0_FINAL.md`.
 
 ```powershell
 docker compose ps
@@ -31,17 +31,17 @@ docker compose stop
 
 ## Chạy mã nguồn ngoài Docker
 
-Yêu cầu Node.js 22.13+ và Python launcher có module `uv`. Backend cố định Python 3.12; `uv` quản lý interpreter và môi trường riêng.
+Yêu cầu Node.js 22.22.2+ (hoặc 24.15+/26+) và npm 12.2.0 và Python launcher có module `uv`. Backend cố định Python 3.12; `uv` quản lý interpreter và môi trường riêng.
 
 ```powershell
-npm.cmd ci
-npm.cmd run dev:web
+npx.cmd --yes npm@12.2.0 ci
+npx.cmd --yes npm@12.2.0 run dev:web
 ```
 
 App tài xế dùng React Native qua Expo theo template chính thức, không thay stack. Chạy trên thiết bị/emulator tương thích với Expo SDK trong lockfile:
 
 ```powershell
-npm.cmd run dev:mobile
+npx.cmd --yes npm@12.2.0 run dev:mobile
 ```
 
 Backend khi các dịch vụ phụ thuộc đã chạy:
@@ -59,7 +59,9 @@ python -m uv run --frozen --env-file ../../.env uvicorn app.main:app --host 127.
 ./scripts/verify.ps1
 ```
 
-Integration test cần database **test riêng**, đã migrate. Không chạy downgrade trên database có dữ liệu vận hành:
+Script kiểm tra yêu cầu Docker stack đang chạy; tự tạo database **test riêng**, chạy toàn bộ 11 test backend cùng vòng upgrade/downgrade/upgrade và xóa đúng database vừa tạo. Thiếu database là lỗi, không skip. Script cũng kiểm tra health thật và ghi/đọc một object MinIO riêng rồi xóa chính version vừa tạo. Không chạy downgrade trên database có dữ liệu vận hành.
+
+Nếu chạy test thủ công, cần database **test riêng**, đã migrate:
 
 ```powershell
 Set-Location apps/api
@@ -81,6 +83,6 @@ CI chạy lint, typecheck, unit test, build web, export bundle Android/iOS, migr
 - `infra/docker`, `compose.yaml`: dev stack.
 - `docs/specifications`: toàn bộ Technical Pack được giải nén, giữ nguyên nội dung.
 - `docs/requirements`: vấn đề phát hiện và truy vết M0.
-- `docs/reports/M0.md`: kết quả kiểm tra và phần còn lại.
+- `docs/reports/M0_FINAL.md`: kết quả xác minh M0 hiện tại; `M0.md` lưu báo cáo ban đầu.
 
-Đọc `START_HERE_FOR_CODEX.md` trước khi sửa source. Tài liệu nghiệp vụ V1.1 có độ ưu tiên cao nhất.
+Đọc `START_HERE_FOR_CODEX_V1.1.md` trước khi sửa source. Trước khi triển khai giao diện phải đọc toàn bộ `UX_UI_Design_Spec_V1.0/`. Tài liệu nghiệp vụ V1.1 có độ ưu tiên cao nhất; bộ UX/UI hướng dẫn điều hướng, luồng thao tác, component, design token và nghiệm thu giao diện, không thay thế hợp đồng nghiệp vụ/API/database.

@@ -6,7 +6,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-fleet_delivery}
       POSTGRES_USER: ${POSTGRES_USER:-fleet}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run scripts/dev.ps1 first}
-    ports: ["127.0.0.1:5432:5432"]
+    ports: ["127.0.0.1:${POSTGRES_PORT:-55433}:5432"]
     volumes: ["postgres-data:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
@@ -33,11 +33,17 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Run scripts/dev.ps1 first}
     ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
     volumes: ["minio-data:/data"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9000/minio/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
   minio-init:
     build:
       context: .
       dockerfile: infra/docker/mc.Dockerfile
-    depends_on: [minio]
+    depends_on:
+      minio: {condition: service_healthy}
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-fleet_storage}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Run scripts/dev.ps1 first}
@@ -55,6 +61,16 @@ services:
       - traccar-data:/opt/traccar/data
       - traccar-logs:/opt/traccar/logs
       - ./infra/docker/traccar.xml:/opt/traccar/conf/traccar.xml:ro
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -ec
+        - "exec 3<>/dev/tcp/127.0.0.1/8082; printf 'GET /api/server HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3; read -r status <&3; [[ $$status == *' 200 '* ]]"
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
   api:
     build:
       context: .
@@ -74,7 +90,7 @@ services:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
       minio-init: {condition: service_completed_successfully}
-      traccar: {condition: service_started}
+      traccar: {condition: service_healthy}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=15)"]
       interval: 10s

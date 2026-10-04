@@ -9,6 +9,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - run: npm install --global npm@12.2.0
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
@@ -16,6 +17,7 @@ jobs:
       - run: npm run build:web
         env: {NEXT_TELEMETRY_DISABLED: '1'}
       - run: npm run build:mobile
+      - run: node scripts/verify_mobile_surface.mjs
   backend:
     runs-on: ubuntu-latest
     services:
@@ -41,8 +43,8 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with: {version: '0.12.23'}
       - run: uv sync --frozen --python 3.12
-      - run: uv run --frozen ruff check .
-      - run: uv run --frozen ruff format --check .
+      - run: uv run --frozen ruff check . ../../scripts
+      - run: uv run --frozen ruff format --check . ../../scripts
       - run: uv run --frozen mypy app
       - run: uv run --frozen alembic upgrade head
       - run: uv run --frozen pytest

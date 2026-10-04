@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "main": "index.ts",
   "dependencies": {
+    "@fleet/shared": "*",
     "expo": "~57.0.26",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
@@ -21,7 +22,7 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "export": "expo export --platform android --platform ios"
+    "export": "expo export --platform android --platform ios --max-workers 2 --source-maps external"
   },
   "private": true
 }

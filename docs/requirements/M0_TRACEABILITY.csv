@@ -1,10 +1,11 @@
 Mã nền tảng,Nguồn,Source,Kiểm tra
 M0-REPO,09_KE_HOACH_CODEX M0,apps + packages + infra + docs,git branch và kiểm tra cấu trúc
 M0-API,START_HERE phần 5,apps/api/app/main.py,test_health.py
-M0-DB,03_DATABASE_SCHEMA.sql,db/migrations/0001_baseline.sql + apps/api/migrations,test_database.py + migration upgrade/downgrade/upgrade
+M0-DB,03_DATABASE_SCHEMA.sql,db/migrations/0001_baseline.sql + apps/api/migrations,scripts/verify_database.py + 11 pytest PASS + real upgrade/downgrade/upgrade
 M0-WEB,01_KIEN_TRUC_HE_THONG,apps/admin-web,lint + typecheck + next build
 M0-MOBILE,01_KIEN_TRUC_HE_THONG,apps/driver-mobile,typecheck + expo export Android/iOS
-M0-INFRA,09_KE_HOACH_CODEX M0,compose.yaml + infra/docker,docker compose config + up --wait + health ready
-M0-CI,09_KE_HOACH_CODEX M0,.github/workflows/ci.yml,workflow chưa chạy trên remote
+M0-INFRA,09_KE_HOACH_CODEX M0,compose.yaml + infra/docker,docker build + up --wait + scripts/verify_stack.py PASS trên service thật
+M0-CI,09_KE_HOACH_CODEX M0,.github/workflows/ci.yml,static structure PASS; CI remote CHƯA XÁC MINH vì chưa có remote
 M0-ENV,07_BAO_MAT_HIEU_NANG_VAN_HANH,.env.example + scripts/dev.ps1 + app/config.py,git ignore env + cấu hình không trả credentials
 M0-BASELINE,START_HERE phần 2.3,openapi/openapi.yaml + db/migrations/0001_baseline.sql,packages/shared/tests/foundation.test.mjs
+M0-UI,START_HERE V1.1 + UX_UI_Design_Spec_V1.0/04_DESIGN_SYSTEM.md,packages/shared/src/design-tokens.ts + web/mobile skeleton,5 viewport browser PASS + mobile typecheck/export PASS; chưa nghiệm thu màn hình nghiệp vụ
