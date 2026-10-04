@@ -1,6 +1,9 @@
+import asyncio
 import json
 import logging
 import time
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
@@ -8,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from app import auth, fleet, gps
 from app.config import get_settings
 from app.health import readiness
 
@@ -64,14 +68,31 @@ class RequestContextMiddleware:
             )
 
 
+@asynccontextmanager
+async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+    tasks = []
+    if settings.app_env != "test" and settings.traccar_email:
+        tasks = [asyncio.create_task(gps.poll_worker()), asyncio.create_task(gps.socket_worker())]
+    try:
+        yield
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+
 settings = get_settings()
-app = FastAPI(title="Fleet Delivery API — M0", version="0.0.0")
+app = FastAPI(title="Fleet Delivery API — M1", version="1.1.0", lifespan=lifespan)
+app.include_router(auth.router)
+app.include_router(fleet.router)
+app.include_router(gps.router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["GET"],
-    allow_headers=["Content-Type"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
     expose_headers=["X-Request-ID"],
 )
 app.add_middleware(RequestContextMiddleware)

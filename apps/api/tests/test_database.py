@@ -1,6 +1,8 @@
 import os
 
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import IntegrityError
 
@@ -38,7 +40,10 @@ def test_baseline_schema_and_postgis(database):
     }
     assert expected <= set(inspect(database).get_table_names())
     with database.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0001"
+        assert (
+            connection.scalar(text("SELECT version_num FROM alembic_version"))
+            == ScriptDirectory.from_config(Config("alembic.ini")).get_current_head()
+        )
         assert connection.scalar(text("SELECT PostGIS_Version()"))
         distance = connection.scalar(
             text(

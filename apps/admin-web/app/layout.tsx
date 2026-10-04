@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import type { CSSProperties } from "react";
 import { designTokens as tokens } from "@fleet/shared";
 import "./globals.css";
+import "leaflet/dist/leaflet.css";
 export const metadata: Metadata = {
   title: "Quản lý xe giao hàng",
   description: "Hệ thống quản lý và định vị xe giao hàng",
 };
-export default function Layout({ children }: Readonly<{children: React.ReactNode}>) {
+export default function Layout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   const theme = {
     "--color-text": tokens.colors.neutral950,
     "--color-muted": tokens.colors.neutral600,
@@ -25,5 +28,9 @@ export default function Layout({ children }: Readonly<{children: React.ReactNode
     "--font-body": `${tokens.typography.web.body.size}px`,
     "--line-body": `${tokens.typography.web.body.lineHeight}px`,
   } as CSSProperties;
-  return <html lang="vi"><body style={theme}>{children}</body></html>;
+  return (
+    <html lang="vi">
+      <body style={theme}>{children}</body>
+    </html>
+  );
 }

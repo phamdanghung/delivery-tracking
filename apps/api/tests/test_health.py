@@ -34,9 +34,15 @@ def test_readiness_checks_every_dependency(monkeypatch, failed):
     assert "password" not in response.text
 
 
-def test_business_routes_are_not_exposed_in_m0():
+def test_only_m1_business_routes_are_exposed():
     paths = app.openapi()["paths"]
-    assert set(paths) == {"/health/live", "/health/ready"}
+    assert "/api/v1/vehicles" in paths
+    assert "/api/v1/auth/login" in paths
+    assert not any(
+        name in path
+        for path in paths
+        for name in ("deliveries", "trips", "tracking", "fuel", "commands")
+    )
 
 
 def test_cors_allows_only_configured_origin():

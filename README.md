@@ -1,16 +1,16 @@
 # Hệ thống quản lý và định vị xe giao hàng
 
-Nền tảng M0 theo bản nghiệp vụ V1.1 đã khóa và Technical Pack V1.0. Chưa có chức năng điều phối, đăng nhập hoặc tracking khách; các phần đó được triển khai theo M1–M8 sau khi M0 đạt tiêu chí thoát.
+M0 đã hoàn tất với accepted risk có điều kiện. M1 bổ sung đăng nhập/RBAC, người dùng, xe, hồ sơ tài xế và GPS Traccar thật theo nghiệp vụ V1.1, Technical Pack V1.0 và UX/UI V1.0. Chưa triển khai workflow giao hàng M2 hoặc customer tracking.
 
 ## Chạy môi trường local
 
-Yêu cầu Docker Desktop với Linux Engine đang hoạt động. Từ thư mục dự án, chạy PowerShell:
+Yêu cầu Docker Desktop với Linux Engine đang hoạt động và Python launcher có module `uv`. Từ thư mục dự án, chạy PowerShell:
 
 ```powershell
 ./scripts/dev.ps1
 ```
 
-Lệnh tạo `.env` với mật khẩu ngẫu nhiên nếu chưa có, build image tuần tự, chạy migration và chờ dịch vụ sẵn sàng. Không ghi đè `.env` đã tồn tại. PostgreSQL local dùng `127.0.0.1:55433`, cấu hình qua `POSTGRES_PORT`, để tránh cổng 5432 đang được service khác sử dụng.
+Lệnh tạo các secret còn thiếu trong `.env` bằng giá trị ngẫu nhiên, build image tuần tự, khởi động dependencies, chạy migration và bootstrap tài khoản đầu tiên trên database/Traccar mới rồi chờ stack sẵn sàng. Giữ các giá trị và tài khoản đã tồn tại, không reset mật khẩu. Đăng nhập web bằng `BOOTSTRAP_ADMIN_EMAIL`/`BOOTSTRAP_ADMIN_PASSWORD` trong `.env` local; đây chỉ là tài khoản khởi tạo dev. PostgreSQL local dùng `127.0.0.1:55433`, cấu hình qua `POSTGRES_PORT`.
 
 - Web: http://localhost:3000
 - API docs: http://localhost:8000/docs
@@ -59,7 +59,7 @@ python -m uv run --frozen --env-file ../../.env uvicorn app.main:app --host 127.
 ./scripts/verify.ps1
 ```
 
-Script kiểm tra yêu cầu Docker stack đang chạy; tự tạo database **test riêng**, chạy toàn bộ 11 test backend cùng vòng upgrade/downgrade/upgrade và xóa đúng database vừa tạo. Thiếu database là lỗi, không skip. Script cũng kiểm tra health thật và ghi/đọc một object MinIO riêng rồi xóa chính version vừa tạo. Không chạy downgrade trên database có dữ liệu vận hành.
+Script kiểm tra yêu cầu Docker stack đã bootstrap và đang chạy; tự tạo database **test riêng**, chạy toàn bộ test backend, gồm REST/WebSocket Traccar thật và feed OsmAnd mô phỏng, cùng vòng upgrade/downgrade/upgrade rồi xóa đúng database vừa tạo. Thiếu database hoặc Traccar là lỗi, không skip. Script cũng kiểm tra health thật và một object MinIO riêng rồi xóa chính version vừa tạo. Không chạy downgrade trên database vận hành.
 
 Nếu chạy test thủ công, cần database **test riêng**, đã migrate:
 
@@ -70,7 +70,7 @@ python -m uv run --frozen alembic upgrade head
 python -m uv run --frozen pytest
 ```
 
-CI chạy lint, typecheck, unit test, build web, export bundle Android/iOS, migration upgrade/downgrade/upgrade và test PostGIS trên database test riêng. Export JavaScript bundle chưa thay thế build native APK/IPA hoặc kiểm thử trên điện thoại.
+CI chạy lint, typecheck, test, build web, export bundle Android/iOS, migration upgrade/downgrade/upgrade và integration test PostGIS/Traccar bằng services thật riêng của run. `npm ci` vẫn hiển thị audit; không suppress findings. Export JavaScript bundle chưa thay thế build native APK/IPA hoặc kiểm thử điện thoại/GPS vật lý.
 
 ## Cấu trúc và truy vết
 
@@ -79,10 +79,17 @@ CI chạy lint, typecheck, unit test, build web, export bundle Android/iOS, migr
 - `apps/driver-mobile`: React Native/Expo, màn hình khởi tạo tiếng Việt.
 - `packages/shared`: kiểu dữ liệu vận hành dùng chung và kiểm tra baseline.
 - `db/migrations/0001_baseline.sql`: bản sao nguyên vẹn SQL đã cung cấp.
-- `openapi/openapi.yaml`: bản sao nguyên vẹn OpenAPI nghiệp vụ; chưa triển khai endpoint M1–M8.
+- `openapi/openapi.yaml`: bản sao nguyên vẹn OpenAPI nghiệp vụ.
+- `openapi/m1.openapi.json`: contract M1 sinh từ FastAPI; test đối chiếu source. Sinh lại bằng `uv run --project apps/api scripts/export_openapi.py` khi thay endpoint/schema M1.
 - `infra/docker`, `compose.yaml`: dev stack.
 - `docs/specifications`: toàn bộ Technical Pack được giải nén, giữ nguyên nội dung.
 - `docs/requirements`: vấn đề phát hiện và truy vết M0.
 - `docs/reports/M0_FINAL_REVISION.md`: kết quả xác minh mới nhất; `M0_FINAL.md` là báo cáo trước xử lý advisory/remote CI; `M0.md` lưu báo cáo ban đầu.
+- `docs/requirements/M1_SCOPE.md`: phạm vi, bổ sung contract và giới hạn M1.
+- `docs/reports/M1_FINAL.md`: báo cáo nghiệm thu M1 và các điểm chưa xác minh.
+
+GPS dùng NORMAL <=30 giây, STALE >30 đến <=120 giây, LOST >120 giây. Bản tin fix cũ vừa tới không trở thành vị trí hiện tại. ACC thiếu → không xác định; speed Traccar đổi từ knots sang km/h. Hồ sơ tài xế liên kết xe qua Trip theo baseline, M1 chỉ đọc liên kết có sẵn.
+
+ADMIN quản trị user/xe/mapping; DISPATCHER đọc fleet/GPS/history; DRIVER chỉ đọc tài khoản của mình trong M1. Web giữ token trong cookie HttpOnly qua BFF cùng origin, không lưu token vào localStorage. Với Traccar đã có tài khoản, điền credentials hợp lệ vào `.env`; bootstrap không tạo lại/reset server đã sử dụng. OSM basemap dành cho kiểm tra local với attribution; review provider/policy trước production.
 
 Đọc `START_HERE_FOR_CODEX_V1.1.md` trước khi sửa source. Trước khi triển khai giao diện phải đọc toàn bộ `UX_UI_Design_Spec_V1.0/`. Tài liệu nghiệp vụ V1.1 có độ ưu tiên cao nhất; bộ UX/UI hướng dẫn điều hướng, luồng thao tác, component, design token và nghiệm thu giao diện, không thay thế hợp đồng nghiệp vụ/API/database.

@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     s3_secret_key: SecretStr = SecretStr("")
     s3_bucket: str = "fleet-pod"
     traccar_url: str = "http://localhost:8082"
+    traccar_email: str = ""
+    traccar_password: SecretStr = SecretStr("")
+    jwt_secret: SecretStr = SecretStr("")
+    jwt_access_seconds: int = 900
+    jwt_refresh_seconds: int = 604800
+    gps_poll_seconds: int = 5
     cors_origins: list[str] = ["http://localhost:3000"]
 
 

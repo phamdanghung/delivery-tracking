@@ -1,15 +1,19 @@
 import asyncio
 import logging
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import boto3
 import httpx
+from alembic.config import Config as AlembicConfig
+from alembic.script import ScriptDirectory
 from botocore.config import Config
 from redis import Redis
 from sqlalchemy import create_engine, text
 
 from app.config import Settings
+from app.traccar import Traccar
 
 logger = logging.getLogger("fleet")
 
@@ -21,7 +25,14 @@ def check_database(settings: Settings) -> None:
     )
     try:
         with engine.connect() as connection:
-            if connection.scalar(text("SELECT version_num FROM alembic_version")) != "0001":
+            configuration = AlembicConfig(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+            configuration.set_main_option(
+                "script_location", str(Path(__file__).resolve().parents[1] / "migrations")
+            )
+            if (
+                connection.scalar(text("SELECT version_num FROM alembic_version"))
+                != ScriptDirectory.from_config(configuration).get_current_head()
+            ):
                 raise RuntimeError("Database migration is not current")
             if not connection.scalar(text("SELECT PostGIS_Version()")):
                 raise RuntimeError("PostGIS is not available")
@@ -56,6 +67,8 @@ def check_storage(settings: Settings) -> None:
 def check_traccar(settings: Settings) -> None:
     with httpx.Client(timeout=3) as client:
         client.get(f"{settings.traccar_url.rstrip('/')}/api/server").raise_for_status()
+    if settings.traccar_email:
+        Traccar(settings).get("devices")
 
 
 async def probe(name: str, function: Callable[[Settings], Any], settings: Settings) -> bool:

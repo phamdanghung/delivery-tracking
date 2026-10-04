@@ -84,6 +84,9 @@ services:
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       S3_BUCKET: fleet-pod
       TRACCAR_URL: http://traccar:8082
+      TRACCAR_EMAIL: ${TRACCAR_EMAIL:-}
+      TRACCAR_PASSWORD: ${TRACCAR_PASSWORD:-}
+      JWT_SECRET: ${JWT_SECRET:-}
       CORS_ORIGINS: '["http://localhost:3000"]'
     ports: ["127.0.0.1:8000:8000"]
     depends_on:
@@ -101,6 +104,8 @@ services:
     build:
       context: .
       dockerfile: infra/docker/web.Dockerfile
+    environment:
+      API_URL: http://api:8000
     ports: ["127.0.0.1:3000:3000"]
     depends_on:
       api: {condition: service_healthy}
