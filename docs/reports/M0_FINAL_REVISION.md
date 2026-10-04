@@ -1,6 +1,6 @@
 # M0 FINAL REVISION
 
-Ngày: 2026-10-04. Tiếp tục M0 từ nền tảng hiện có; không chuyển M1. Báo cáo này thay trạng thái hiện tại của M0_FINAL.md, giữ báo cáo cũ làm lịch sử.
+Ngày xác minh nền tảng: 2026-10-04. Cập nhật quyết định chủ dự án: 2026-10-05 (Asia/Bangkok). Báo cáo này thay trạng thái hiện tại của M0_FINAL.md, giữ báo cáo cũ làm lịch sử. M0 đạt PASS WITH ACCEPTED RISK theo phạm vi và điều kiện ở mục 12; lượt cập nhật này chỉ sửa tài liệu, chưa triển khai M1.
 
 ## 1. Dependency tree và phân loại từng nhóm advisory
 
@@ -100,10 +100,30 @@ Frontend xác minh npm ci/lint/typecheck/3 Node tests/web build/Android+iOS expo
 
 ## 12. Vấn đề nào cần chủ dự án quyết định
 
-**CHƯA CÓ PHÊ DUYỆT** chấp nhận tạm braces/node-forge. Đã gửi phương án: chỉ M0/local dev, repo/config/cert tin cậy, Metro localhost, Compose loopback, giữ 19 high audit findings công khai, review lại trước 2026-11-03 hoặc production (mốc nào đến trước). Review không phải automation đã tự tạo. Không áp dụng cho production hoặc cho phép M1. Chưa nhận quyết định thì không tự chấp nhận rủi ro.
+**ĐÃ ĐƯỢC CHỦ DỰ ÁN PHÊ DUYỆT CÓ ĐIỀU KIỆN ngày 2026-10-05**, bằng chỉ thị trực tiếp trong cuộc trao đổi dự án, chấp nhận tạm thời hai advisory:
+
+- braces — GHSA-vfj7-8cjw-p6xm.
+- node-forge — GHSA-86w9-cpqp-85rv.
+
+Phạm vi chỉ là M0 và môi trường development/local/CI hiện tại. Đây không phải phê duyệt production, không phải xác nhận đã vá advisory và không cho phép bỏ qua kiểm soát bảo mật khác. Audit vẫn còn 19 high findings; không chuyển kết quả npm audit thành PASS.
+
+Điều kiện bắt buộc giữ nguyên:
+
+- Chỉ dùng repo/config/cert đáng tin cậy.
+- Metro chỉ local/loopback; Docker/Compose không expose không cần thiết ra mạng.
+- Không dùng npm audit fix --force; không suppress hoặc ẩn advisory.
+- Giữ npm audit trong CI/report. CI hiện hiển thị audit trong bước npm ci (audit mặc định vẫn bật); báo cáo giữ kết quả npm audit đầy đủ, không dùng local test thay cho CI remote.
+
+Theo dõi và hết hiệu lực chấp nhận:
+
+- Kiểm tra lại **trước ngày 03/11/2026**, tức muộn nhất **02/11/2026**, hoặc trước triển khai production, tùy mốc nào đến trước. Đây là hạn review bắt buộc; không tự tạo automation trong lượt cập nhật tài liệu này.
+- Nếu upstream có bản vá sớm hơn, ưu tiên nâng cấp và chạy lại đầy đủ npm ci, web build, Android/iOS export, tests, Docker/stack/health và CI remote trước khi đóng advisory.
+- Nếu advisory đi vào runtime attack surface thực tế ở milestone sau, dừng phần liên quan và đánh giá lại ngay; không suy rộng phê duyệt M0 sang milestone đó.
+
+Quyết định rủi ro M0 đã được chủ dự án chốt; không còn chờ phê duyệt hai advisory trong phạm vi trên. Điều kiện thoát M0 được đáp ứng với ngoại lệ bảo mật được chấp nhận rõ ràng. Có thể chuyển sang M1 theo kế hoạch đã khóa; chưa triển khai M1 trong lượt này.
 
 Ngoài M0: native APK/IPA/thiết bị thật, GPS thật, M1–M8/production chưa xác minh. Ba điểm tài liệu cho milestone sau (quyền hẹn giao lại, safety alert states, stale GPS config) giữ nguyên chờ thống nhất; chưa sửa nghiệp vụ.
 
-## 13. Kết luận M0: FAIL
+## 13. Kết luận M0: PASS WITH ACCEPTED RISK
 
-**FAIL — chưa được kết luận M0 hoàn tất.** UUID đã vá và CI remote đã có bằng chứng PASS; toàn bộ build/test/migration/Docker/stack/health đã đạt. **Chỉ còn chờ chủ dự án quyết định rủi ro hai advisory chưa có bản vá.** Không chuyển M1, không làm lại M0, không đổi kiến trúc/nghiệp vụ đã khóa.
+**PASS WITH ACCEPTED RISK — M0 hoàn tất với ngoại lệ bảo mật được chủ dự án phê duyệt có điều kiện.** UUID đã vá; build/test/migration/Docker/stack/health và CI remote đã đạt theo bằng chứng ở trên. Hai advisory braces/node-forge vẫn tồn tại và tiếp tục được công khai, theo dõi, giới hạn bởi mục 12. Không phê duyệt production, không đổi kiến trúc/nghiệp vụ đã khóa. Có thể chuyển M1; không tự triển khai M1 trong lượt cập nhật tài liệu này.

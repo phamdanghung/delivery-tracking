@@ -102,6 +102,10 @@ Danh sách từ lockfile trước sửa, resolve theo vị trí node_modules, de
 - Thay forge bằng thư viện crypto khác hoặc braces bằng parser khác không tương thích API của cha; không có drop-in patch đã được chứng minh. Không viết crypto/parser tự chế hoặc buộc dependency khác chỉ để audit về 0. Chờ upstream fix rồi nâng, chạy lại toàn bộ gates.
 - Không dùng npm audit fix --force; không ignore/suppress advisory; không hạ SDK.
 
-## Quyết định chờ chủ dự án
+## Quyết định chủ dự án — phê duyệt có điều kiện
 
-Đề xuất chấp nhận tạm 2 advisory chưa có bản vá chỉ cho M0/local development: tooling chỉ dùng repo/config/cert tin cậy, Metro chỉ loopback, audit vẫn công khai 19 high entries, kiểm tra lại chậm nhất 2026-11-03 hoặc trước triển khai production (mốc nào đến trước). Việc review là yêu cầu quy trình, không có automation được tự tạo. Không tự phê duyệt; chưa có quyết định thì M0 FAIL. Chấp nhận này không cho phép M1 hoặc production.
+Ngày 2026-10-05 (Asia/Bangkok), chủ dự án phê duyệt trực tiếp chấp nhận tạm braces GHSA-vfj7-8cjw-p6xm và node-forge GHSA-86w9-cpqp-85rv, chỉ cho M0 và development/local/CI hiện tại. Không áp dụng cho production hoặc miễn trừ kiểm soát bảo mật khác. Giữ repo/config/cert tin cậy, Metro local/loopback, Compose không expose không cần thiết, không audit fix --force, không suppress/ẩn advisory; npm audit vẫn hiện trong CI/report với 19 high entries.
+
+Review trước 03/11/2026 (muộn nhất 02/11/2026) hoặc trước production, tùy mốc nào đến trước. Khi upstream có bản vá sớm hơn, ưu tiên nâng và chạy lại npm ci, web build, Android/iOS export, toàn bộ tests, Docker/stack/health và CI remote. Nếu advisory đi vào runtime attack surface thực tế ở milestone sau, dừng và đánh giá lại ngay. Không tự tạo automation trong lượt sửa tài liệu.
+
+Kết luận M0: **PASS WITH ACCEPTED RISK**. Có thể chuyển M1 theo kế hoạch đã khóa; phê duyệt rủi ro này không được suy rộng sang production hoặc runtime của milestone sau. Quyết định đầy đủ lưu tại mục 12 của [M0_FINAL_REVISION.md](M0_FINAL_REVISION.md).
