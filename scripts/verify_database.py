@@ -1,5 +1,6 @@
 """Verify the real dev migration and the full API suite in an isolated test database."""
 
+import argparse
 import os
 import subprocess
 import sys
@@ -11,9 +12,14 @@ from sqlalchemy.engine import make_url
 
 root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(root / "apps/api"))
-from app.config import Settings  # noqa: E402 -- add the workspace API to the import path first
+from app.config import Settings  # noqa: E402
 
 settings = Settings(_env_file=root / ".env")
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--focused", help="Only selected tests in an isolated DB; leave dev DB unchanged"
+)
+options = parser.parse_args()
 dev_url = make_url(settings.database_url.get_secret_value())
 test_name = "fleet_delivery_m0_test_" + uuid4().hex[:12]
 admin = create_engine(
@@ -46,22 +52,26 @@ def command(*args: str, url: str, test: bool = False) -> None:
 
 try:
     dev_connection = dev_url.render_as_string(hide_password=False)
-    command("alembic", "upgrade", "head", url=dev_connection)
-    engine = create_engine(dev_url, connect_args={"connect_timeout": 15})
-    with engine.connect() as connection:
-        print(
-            "Dev migration:",
-            connection.scalar(text("SELECT version_num FROM alembic_version")),
-        )
-        print("PostGIS:", connection.scalar(text("SELECT PostGIS_Version()")))
-        print("Dev tables:", len(inspect(engine).get_table_names()))
-    engine.dispose()
+    if not options.focused:
+        command("alembic", "upgrade", "head", url=dev_connection)
+        engine = create_engine(dev_url, connect_args={"connect_timeout": 15})
+        with engine.connect() as connection:
+            print(
+                "Dev migration:",
+                connection.scalar(text("SELECT version_num FROM alembic_version")),
+            )
+            print("PostGIS:", connection.scalar(text("SELECT PostGIS_Version()")))
+            print("Dev tables:", len(inspect(engine).get_table_names()))
+        engine.dispose()
     with admin.connect() as connection:
         # Generated identifier contains only a fixed prefix and hexadecimal UUID characters.
         connection.exec_driver_sql(f'CREATE DATABASE "{test_name}"')
     test_created = True
     test_connection = dev_url.set(database=test_name).render_as_string(hide_password=False)
     command("alembic", "upgrade", "head", url=test_connection, test=True)
+    if options.focused:
+        command("pytest", options.focused, "-q", "-x", url=test_connection, test=True)
+        sys.exit(0)
     command(
         "pytest",
         "-ra",

@@ -235,6 +235,53 @@ Theo dõi:
 - Nếu upstream có bản vá sớm hơn: ưu tiên nâng cấp và chạy lại đầy đủ npm ci, build, Android/iOS export, test, Docker/stack/health và CI remote.
 - Nếu advisory xuất hiện trong runtime attack surface thực tế ở milestone sau: dừng phần liên quan và đánh giá lại, không suy rộng quyết định này.
 
+### DEC-025 — M2 chỉ lưu chuyến nháp (M2-1 / D1)
+- Ngày chốt: 05/10/2026.
+- Milestone liên quan: M2/M3.
+- Quyết định: M2 cho tạo/lưu chuyến nháp, chọn xe, tài xế và các điểm giao; chưa mở nút duyệt/xuất chuyến trên web.
+- Phạm vi: sau M3 có tối ưu tuyến và ETA mới cho duyệt/xuất chuyến.
+- Ghi chú: giữ lịch sử các quyết định cũ, không giả ETA hoặc bỏ bước duyệt UX.
+
+### DEC-026 — Điểm đầu/cuối cấu hình (M2-2 / E2)
+- Ngày chốt: 05/10/2026.
+- Milestone liên quan: M2.
+- Quyết định: điểm đầu/cuối mặc định lấy từ ENV/config; không hard-code tọa độ, không tự geocode qua provider.
+- Phạm vi: nếu chưa có tọa độ công ty/xưởng, hiển thị thiếu cấu hình và chưa cho lưu chuyến hoàn chỉnh cần điểm đầu/cuối.
+- Ghi chú: điều phối vẫn được thay điểm đầu/cuối theo DEC-002.
+
+### DEC-027 — Quyền hủy đơn M2 (M2-3)
+- Ngày chốt: 05/10/2026.
+- Milestone liên quan: M2.
+- Quyết định: ADMIN/DISPATCHER được hủy đơn CREATED, PLANNED, ASSIGNED; bắt buộc lý do và audit đầy đủ.
+- Không áp dụng cho: DRIVER hoặc các trạng thái khác.
+
+### DEC-028 — Sửa ARRIVED để M4 (M2-4)
+- Ngày chốt: 05/10/2026.
+- Milestone liên quan: M2/M4.
+- Quyết định: M2 không triển khai sửa ARRIVED nhận sai hoặc transition ngược đặc biệt.
+- Phạm vi: giữ chức năng cho M4 khi triển khai geofence/ARRIVED theo DEC-004.
+
+### DEC-029 — Accepted Risk cho M2
+- Ngày chốt: 06/10/2026.
+- Milestone liên quan: M2.
+- Quyết định: chủ dự án phê duyệt CHẤP NHẬN TẠM THỜI rủi ro của `braces GHSA-vfj7-8cjw-p6xm` và `node-forge GHSA-86w9-cpqp-85rv` cho M2 development/local/CI.
+- Phạm vi: chỉ M2 và môi trường development/local/CI hiện tại.
+- Không áp dụng cho: production hoặc milestone khác. Không xem advisory là đã vá, không miễn trừ các kiểm soát bảo mật khác.
+- Ghi chú: quyết định riêng cho M2; giữ nguyên DEC-023/024 và lịch sử. M2 được kết luận PASS WITH ACCEPTED RISK; không tự merge PR hoặc chuyển M3.
+
+Điều kiện bắt buộc:
+- chỉ dùng repo/config/cert đáng tin cậy;
+- Metro và Docker/Compose chỉ expose trong phạm vi cần thiết/loopback;
+- không dùng `npm audit fix --force`;
+- không downgrade Expo/React Native chỉ để làm audit về 0;
+- không suppress hoặc ẩn advisory;
+- tiếp tục giữ npm audit và runtime-surface gates trong CI/report.
+
+Theo dõi:
+- Review muộn nhất **02/11/2026** hoặc trước production, tùy mốc nào đến trước.
+- Nếu upstream có bản vá sớm hơn: ưu tiên nâng cấp và chạy lại đầy đủ npm ci, build, Android/iOS export, test, Docker/stack/health và CI remote.
+- Nếu advisory đi vào runtime attack surface thực tế ở milestone sau: dừng phần liên quan và đánh giá lại; không tự suy rộng exception.
+
 ## 14. Milestone boundaries
 
 ### M0

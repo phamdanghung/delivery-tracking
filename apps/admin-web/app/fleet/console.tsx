@@ -1,6 +1,8 @@
 "use client";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import DispatchWorkspace, { type DispatchView } from "../dispatch/workspace";
 import {
   engineLabels,
   gpsFreshness,
@@ -92,9 +94,13 @@ const message = (value: unknown) =>
 export default function FleetConsole({
   view = "live",
   vehicleId,
+  dispatchView,
+  entityId,
 }: {
-  view?: "live" | "vehicles" | "users" | "history";
+  view?: "live" | "vehicles" | "users" | "history" | "deliveries" | "trips";
   vehicleId?: string;
+  dispatchView?: DispatchView;
+  entityId?: string;
 }) {
   const [user, setUser] = useState<User | null>(null),
     [loading, setLoading] = useState(true),
@@ -188,6 +194,22 @@ export default function FleetConsole({
           giao hàng
         </strong>
         <nav aria-label="Điều hướng">
+          {user.role !== "DRIVER" && (
+            <>
+              <Link
+                href="/deliveries"
+                aria-current={view === "deliveries" ? "page" : undefined}
+              >
+                Đơn giao
+              </Link>
+              <Link
+                href="/trips"
+                aria-current={view === "trips" ? "page" : undefined}
+              >
+                Chuyến giao
+              </Link>
+            </>
+          )}
           <a
             href="/fleet/live"
             aria-current={view === "live" ? "page" : undefined}
@@ -241,6 +263,13 @@ export default function FleetConsole({
               Tài xế không được xem toàn bộ đội xe hoặc lịch sử xe.
             </p>
           </main>
+        ) : view === "deliveries" || view === "trips" ? (
+          <DispatchWorkspace
+            api={api}
+            view={dispatchView || (view === "trips" ? "trips" : "list")}
+            entityId={entityId}
+            onExpired={expire}
+          />
         ) : (
           <FleetData
             user={user}

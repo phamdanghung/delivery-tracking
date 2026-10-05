@@ -80,7 +80,7 @@ CI chạy lint, typecheck, test, build web, export bundle Android/iOS, migration
 - `packages/shared`: kiểu dữ liệu vận hành dùng chung và kiểm tra baseline.
 - `db/migrations/0001_baseline.sql`: bản sao nguyên vẹn SQL đã cung cấp.
 - `openapi/openapi.yaml`: bản sao nguyên vẹn OpenAPI nghiệp vụ.
-- `openapi/m1.openapi.json`: contract M1 sinh từ FastAPI; test đối chiếu source. Sinh lại bằng `uv run --project apps/api scripts/export_openapi.py` khi thay endpoint/schema M1.
+- `openapi/m1.openapi.json`: contract M1 sinh từ FastAPI; test đối chiếu source. Giữ snapshot M1 để kiểm tra tương thích. `uv run --project apps/api scripts/export_openapi.py` sinh contract M2 hiện tại vào `openapi/m2.openapi.json`.
 - `infra/docker`, `compose.yaml`: dev stack.
 - `docs/specifications`: toàn bộ Technical Pack được giải nén, giữ nguyên nội dung.
 - `docs/requirements`: vấn đề phát hiện và truy vết M0.
@@ -93,3 +93,11 @@ GPS dùng NORMAL <=30 giây, STALE >30 đến <=120 giây, LOST >120 giây. Bả
 ADMIN quản trị user/xe/mapping; DISPATCHER đọc fleet/GPS/history; DRIVER chỉ đọc tài khoản của mình trong M1. Web giữ token trong cookie HttpOnly qua BFF cùng origin, không lưu token vào localStorage. Với Traccar đã có tài khoản, điền credentials hợp lệ vào `.env`; bootstrap không tạo lại/reset server đã sử dụng. OSM basemap dành cho kiểm tra local với attribution; review provider/policy trước production.
 
 Đọc `START_HERE_FOR_CODEX_V1.1.md` trước khi sửa source. Trước khi triển khai giao diện phải đọc toàn bộ `UX_UI_Design_Spec_V1.0/`. Tài liệu nghiệp vụ V1.1 có độ ưu tiên cao nhất; bộ UX/UI hướng dẫn điều hướng, luồng thao tác, component, design token và nghiệm thu giao diện, không thay thế hợp đồng nghiệp vụ/API/database.
+
+## M2 — đơn và chuyến nháp
+
+Áp dụng DEC-025–028 và `docs/requirements/M2_SCOPE.md`. Web `/deliveries` nhập đơn (nháp Zalo chỉ gợi ý), ba kiểu hẹn, timeline/audit, hủy có lý do và xác nhận giao lại. `/trips` lưu DRAFT với xe/tài xế/stops; chưa duyệt/xuất hoặc tối ưu tuyến. Quá tải chỉ cảnh báo.
+
+Migration `0003` thêm trạng thái từng lần giao và đề xuất giao lại; baseline 0001/0002 giữ nguyên. `COMPANY_LATITUDE`/`COMPANY_LONGITUDE` trong `.env` cấu hình điểm công ty. Khi thiếu, web báo rõ và yêu cầu nhập điểm thay thế hợp lệ theo DEC-002; không tự geocode. Không đưa tọa độ giả vào cấu hình vận hành.
+
+Driver chỉ thấy chuyến đã duyệt của mình và chỉ đề xuất lịch giao lại. Điều phối xác nhận mới cập nhật đơn; DELIVERED vẫn cần ảnh POD trên storage thật, upload thuộc M5. Xem `openapi/m2.openapi.json` và `docs/reports/M2_FINAL.md` để đối chiếu contract/kết quả nghiệm thu.

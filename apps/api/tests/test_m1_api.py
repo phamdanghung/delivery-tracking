@@ -188,7 +188,8 @@ def test_driver_profile_vehicle_relation_is_read_only_through_trip(context):
         is False
     )
     assert client.get("/api/v1/drivers", headers=header(tokens, "DRIVER")).status_code == 403
-    assert client.post("/api/v1/trips", headers=header(tokens), json={}).status_code == 404
+    # M2 now exposes draft creation; incomplete input must not create/publish a trip.
+    assert client.post("/api/v1/trips", headers=header(tokens), json={}).status_code == 422
 
 
 def test_vehicle_mapping_ingest_duplicate_out_of_order_remap_and_outage(context, monkeypatch):
