@@ -1,6 +1,7 @@
 """Verify real M1 services using scoped simulated GPS fixtures, never physical GPS."""
 
 import json
+import secrets
 import subprocess
 import sys
 import time
@@ -21,6 +22,7 @@ values = dict(
     if "=" in line and not line.startswith("#")
 )
 fixture = root / "artifacts/m1-ui-fixtures.json"
+accounts_file = root / "artifacts/m1-ui-accounts.json"
 base, traccar_url = "http://127.0.0.1:8000/api/v1", settings.traccar_url.rstrip("/")
 with httpx.Client(timeout=20, trust_env=False) as client:
     login = client.post(
@@ -110,6 +112,25 @@ with httpx.Client(timeout=20, trust_env=False) as client:
                     indent=2,
                 )
             )
+        elif mode == "--prepare-accounts":
+            assert not accounts_file.exists(), "Clean up previous UI test accounts first"
+            accounts = []
+            for role in ("DISPATCHER", "DRIVER"):
+                account = {
+                    "email": "m1-ui-" + uuid4().hex + "@verification.local",
+                    "password": secrets.token_urlsafe(24),
+                    "role": role,
+                }
+                response = client.post(
+                    base + "/users",
+                    headers=headers,
+                    json={**account, "full_name": "M1 UI SIMULATED " + role},
+                )
+                response.raise_for_status()
+                account["id"] = response.json()["id"]
+                accounts.append(account)
+                accounts_file.write_text(json.dumps(accounts, indent=2))
+            print("Created scoped simulated UI roles; credentials remain in ignored artifacts.")
         elif mode == "--outage":
             assert records, "Prepare scoped fixtures before the outage verification"
             try:
@@ -162,6 +183,13 @@ with httpx.Client(timeout=20, trust_env=False) as client:
                 )
                 response.raise_for_status()
             fixture.unlink(missing_ok=True)
+            if accounts_file.exists():
+                for account in json.loads(accounts_file.read_text()):
+                    response = client.patch(
+                        base + f"/users/{account['id']}", headers=headers, json={"is_active": False}
+                    )
+                    response.raise_for_status()
+                accounts_file.unlink()
             print("Removed only the scoped M1 UI simulation fixtures; other data preserved.")
         else:
             raise RuntimeError("Unknown verification mode")

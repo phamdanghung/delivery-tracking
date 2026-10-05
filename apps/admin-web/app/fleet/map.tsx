@@ -6,6 +6,7 @@ type MapPoint = {
   latitude: number;
   longitude: number;
   label: string;
+  details?: string;
   stale?: boolean;
   selected?: boolean;
 };
@@ -55,6 +56,10 @@ export default function FleetMap({
       for (const point of points) {
         const label = document.createElement("span");
         label.textContent = point.label;
+        const popup = document.createElement("div");
+        popup.style.whiteSpace = "pre-line";
+        popup.textContent =
+          point.label + (point.details ? "\n" + point.details : "");
         L.circleMarker([point.latitude, point.longitude], {
           radius: point.selected ? 12 : 8,
           weight: point.selected ? 4 : 2,
@@ -63,6 +68,7 @@ export default function FleetMap({
           dashArray: point.stale ? "4 4" : undefined,
         })
           .bindTooltip(label, { permanent: point.selected })
+          .bindPopup(popup)
           .addTo(layer.current);
       }
       for (const segment of segments) {

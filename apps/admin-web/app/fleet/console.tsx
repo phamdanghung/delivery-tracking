@@ -34,6 +34,17 @@ type Live = {
   freshness: string;
   reason: string | null;
 };
+type Driver = {
+  id: string;
+  full_name: string;
+  active: boolean;
+  is_active: boolean;
+  vehicle_assignments: {
+    vehicle_id: string;
+    trip_id: string;
+    status: string;
+  }[];
+};
 type History = {
   segments: Position[][];
   points: Position[];
@@ -243,6 +254,7 @@ function FleetData({
   vehicleId?: string;
 }) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]),
+    [drivers, setDrivers] = useState<Driver[]>([]),
     [users, setUsers] = useState<User[]>([]),
     [live, setLive] = useState<Record<string, Live>>({}),
     [outages, setOutages] = useState<Record<string, boolean>>({});
@@ -271,6 +283,7 @@ function FleetData({
       else {
         const list = await api<Vehicle[]>("vehicles");
         setVehicles(list);
+        setDrivers(await api<Driver[]>("drivers"));
         await Promise.all(
           list.map(async (vehicle) => {
             try {
@@ -321,6 +334,15 @@ function FleetData({
         .includes(search.toLocaleLowerCase()) &&
       (!filter || freshness(v.id) === filter),
   );
+  const driverName = (id: string) =>
+    drivers.find(
+      (d) =>
+        d.active &&
+        d.is_active &&
+        d.vehicle_assignments.some(
+          (a) => a.vehicle_id === id && a.status === "ACTIVE",
+        ),
+    )?.full_name || "Chưa có chuyến đang chạy phân tài xế";
   const positions = vehicles.flatMap((v) => {
     const p = live[v.id]?.position;
     return p?.valid && p.latitude !== null && p.longitude !== null
@@ -331,6 +353,7 @@ function FleetData({
             selected: v.id === selected,
             stale: freshness(v.id) !== "NORMAL",
             label: `${v.plate_no} · ${freshness(v.id) === "NORMAL" ? "Vị trí hiện tại" : "Vị trí cuối ghi nhận"} · ${gpsLabels[freshness(v.id)]}`,
+            details: `Tài xế: ${driverName(v.id)}\nTốc độ: ${p.speed_kmh?.toFixed(1) ?? "—"} km/h · Hướng: ${p.course ?? "—"}°\nACC: ${p.acc === null ? "Không xác định" : p.acc ? "Bật" : "Tắt"}\nĐộng cơ${freshness(v.id) === "NORMAL" ? "" : " (lần cuối)"}: ${engineLabels[p.engine_state]}\nGPS: ${time(p.gps_at)}\nServer nhận: ${time(p.server_received_at)}\nTọa độ: ${p.latitude.toFixed(6)}, ${p.longitude.toFixed(6)}`,
           },
         ]
       : [];
@@ -748,6 +771,8 @@ function FleetData({
                     </p>
                     {p && (
                       <dl>
+                        <dt>Tài xế</dt>
+                        <dd>{driverName(vehicle.id)}</dd>
                         <dt>Tọa độ</dt>
                         <dd>
                           {p.latitude?.toFixed(6) ?? "Không hợp lệ"},{" "}

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 from typing import Literal
 from uuid import UUID
@@ -82,6 +82,27 @@ class DriverInput(Input):
     active: bool = True
 
 
+class DriverProfileOut(BaseModel):
+    id: UUID
+    user_id: UUID
+    active: bool
+
+
+class VehicleAssignment(BaseModel):
+    trip_id: UUID
+    vehicle_id: UUID
+    trip_date: date
+    status: Literal["DRAFT", "PLANNED", "ACTIVE", "COMPLETED", "CANCELLED"]
+    plate_no: str
+
+
+class DriverOut(DriverProfileOut):
+    full_name: str
+    phone: str | None
+    is_active: bool
+    vehicle_assignments: list[VehicleAssignment]
+
+
 class TokenOut(BaseModel):
     access_token: str
     refresh_token: str
@@ -112,3 +133,33 @@ class LivePosition(BaseModel):
     position: GpsPosition | None
     freshness: Literal["NORMAL", "STALE", "LOST"]
     reason: str | None
+
+
+class GpsGap(BaseModel):
+    start: datetime | None = Field(alias="from")
+    end: datetime | None = Field(alias="to")
+    reason: Literal["MISSING_OR_INVALID_GPS"]
+
+
+class GpsStop(BaseModel):
+    started_at: datetime
+    ended_at: datetime
+    duration_seconds: float
+    engine_state: Literal["IDLING", "PARKED"]
+    latitude: float
+    longitude: float
+
+
+class GpsHistory(BaseModel):
+    points: list[GpsPosition]
+    segments: list[list[GpsPosition]]
+    gaps: list[GpsGap]
+    stops: list[GpsStop]
+
+
+class OdometerReport(BaseModel):
+    distance_km: float | None
+    source: Literal["TRACCAR", "TRACCAR_REPORT_SUMMARY"]
+    reason: str | None
+    start: datetime | None = Field(default=None, alias="from")
+    end: datetime | None = Field(default=None, alias="to")

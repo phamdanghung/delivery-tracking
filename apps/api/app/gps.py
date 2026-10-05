@@ -13,7 +13,7 @@ from sqlalchemy.engine import Connection
 from app.auth import Db, Operator
 from app.config import get_settings
 from app.database import engine_for, table
-from app.schemas import LivePosition
+from app.schemas import GpsHistory, LivePosition, OdometerReport
 from app.traccar import Traccar
 
 router = APIRouter(prefix="/api/v1", tags=["gps"])
@@ -267,7 +267,7 @@ def interval(start: datetime, end: datetime) -> None:
         raise HTTPException(422, "Mỗi truy vấn tối đa 31 ngày; hãy chia khoảng thời gian")
 
 
-@router.get("/vehicles/{vehicle_id}/history")
+@router.get("/vehicles/{vehicle_id}/history", response_model=GpsHistory)
 def history(
     vehicle_id: UUID,
     user: Operator,
@@ -285,7 +285,11 @@ def history(
     return history_data([p for p in positions if p.get("deviceId") == device])
 
 
-@router.get("/vehicles/{vehicle_id}/odometer")
+@router.get(
+    "/vehicles/{vehicle_id}/odometer",
+    response_model=OdometerReport,
+    response_model_exclude_unset=True,
+)
 def odometer(
     vehicle_id: UUID,
     user: Operator,

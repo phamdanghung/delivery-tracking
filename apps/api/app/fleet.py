@@ -8,7 +8,17 @@ from sqlalchemy.exc import IntegrityError
 
 from app.auth import Admin, Db, Operator, hasher
 from app.database import audit, table
-from app.schemas import DriverInput, Role, UserCreate, UserOut, UserUpdate, VehicleInput, VehicleOut
+from app.schemas import (
+    DriverInput,
+    DriverOut,
+    DriverProfileOut,
+    Role,
+    UserCreate,
+    UserOut,
+    UserUpdate,
+    VehicleInput,
+    VehicleOut,
+)
 from app.traccar import Traccar
 
 router = APIRouter(prefix="/api/v1", tags=["fleet"])
@@ -218,7 +228,7 @@ def vehicle_delete(vehicle_id: UUID, user: Admin, request: Request, db: Db) -> N
     audit(db, request, user.id, "DELETE", "vehicle", vehicle_id, before=before)
 
 
-@router.get("/drivers")
+@router.get("/drivers", response_model=list[DriverOut])
 def drivers_list(user: Operator, db: Db) -> list[dict[str, Any]]:
     profiles, users = table("driver_profiles", db), table("users", db)
     rows = db.execute(
@@ -253,7 +263,7 @@ def drivers_list(user: Operator, db: Db) -> list[dict[str, Any]]:
     return result
 
 
-@router.put("/drivers/{driver_id}")
+@router.put("/drivers/{driver_id}", response_model=DriverProfileOut)
 def driver_update(
     driver_id: UUID, data: DriverInput, user: Admin, request: Request, db: Db
 ) -> dict[str, Any]:

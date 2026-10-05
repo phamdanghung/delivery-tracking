@@ -500,8 +500,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/DriverOut"
                   },
                   "type": "array",
                   "title": "Response Drivers List Api V1 Drivers Get"
@@ -557,9 +556,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Driver Update Api V1 Drivers  Driver Id  Put"
+                  "$ref": "#/components/schemas/DriverProfileOut"
                 }
               }
             }
@@ -675,9 +672,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response History Api V1 Vehicles  Vehicle Id  History Get"
+                  "$ref": "#/components/schemas/GpsHistory"
                 }
               }
             }
@@ -745,9 +740,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Odometer Api V1 Vehicles  Vehicle Id  Odometer Get"
+                  "$ref": "#/components/schemas/OdometerReport"
                 }
               }
             }
@@ -831,6 +824,169 @@
           "user_id"
         ],
         "title": "DriverInput"
+      },
+      "DriverOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "vehicle_assignments": {
+            "items": {
+              "$ref": "#/components/schemas/VehicleAssignment"
+            },
+            "type": "array",
+            "title": "Vehicle Assignments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "active",
+          "full_name",
+          "phone",
+          "is_active",
+          "vehicle_assignments"
+        ],
+        "title": "DriverOut"
+      },
+      "DriverProfileOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "active"
+        ],
+        "title": "DriverProfileOut"
+      },
+      "GpsGap": {
+        "properties": {
+          "from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
+          },
+          "reason": {
+            "type": "string",
+            "const": "MISSING_OR_INVALID_GPS",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "from",
+          "to",
+          "reason"
+        ],
+        "title": "GpsGap"
+      },
+      "GpsHistory": {
+        "properties": {
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/GpsPosition"
+            },
+            "type": "array",
+            "title": "Points"
+          },
+          "segments": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/GpsPosition"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Segments"
+          },
+          "gaps": {
+            "items": {
+              "$ref": "#/components/schemas/GpsGap"
+            },
+            "type": "array",
+            "title": "Gaps"
+          },
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/GpsStop"
+            },
+            "type": "array",
+            "title": "Stops"
+          }
+        },
+        "type": "object",
+        "required": [
+          "points",
+          "segments",
+          "gaps",
+          "stops"
+        ],
+        "title": "GpsHistory"
       },
       "GpsPosition": {
         "properties": {
@@ -987,6 +1143,50 @@
         ],
         "title": "GpsPosition"
       },
+      "GpsStop": {
+        "properties": {
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "ended_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ended At"
+          },
+          "duration_seconds": {
+            "type": "number",
+            "title": "Duration Seconds"
+          },
+          "engine_state": {
+            "type": "string",
+            "enum": [
+              "IDLING",
+              "PARKED"
+            ],
+            "title": "Engine State"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          }
+        },
+        "type": "object",
+        "required": [
+          "started_at",
+          "ended_at",
+          "duration_seconds",
+          "engine_state",
+          "latitude",
+          "longitude"
+        ],
+        "title": "GpsStop"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1069,6 +1269,71 @@
           "password"
         ],
         "title": "Login"
+      },
+      "OdometerReport": {
+        "properties": {
+          "distance_km": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Km"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "TRACCAR",
+              "TRACCAR_REPORT_SUMMARY"
+            ],
+            "title": "Source"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
+          }
+        },
+        "type": "object",
+        "required": [
+          "distance_km",
+          "source",
+          "reason"
+        ],
+        "title": "OdometerReport"
       },
       "Refresh": {
         "properties": {
@@ -1330,6 +1595,49 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VehicleAssignment": {
+        "properties": {
+          "trip_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Trip Id"
+          },
+          "vehicle_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Vehicle Id"
+          },
+          "trip_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Trip Date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PLANNED",
+              "ACTIVE",
+              "COMPLETED",
+              "CANCELLED"
+            ],
+            "title": "Status"
+          },
+          "plate_no": {
+            "type": "string",
+            "title": "Plate No"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trip_id",
+          "vehicle_id",
+          "trip_date",
+          "status",
+          "plate_no"
+        ],
+        "title": "VehicleAssignment"
       },
       "VehicleInput": {
         "properties": {

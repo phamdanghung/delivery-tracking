@@ -1,0 +1,14 @@
+Requirement,Source,Implementation,Verification
+Users/RBAC,09_KE_HOACH_CODEX M1 + role matrix,app/auth.py + app/fleet.py,test_m1_api.py
+Vehicle/device mapping,Vehicle model + GPS-01,app/fleet.py + vehicles unique device baseline,test_real_traccar.py + test_m1_api.py
+Driver/User/Vehicle,Locked business per-Trip assignment,DriverProfile User FK + read existing Trip link,test_driver_profile_vehicle_relation_is_read_only_through_trip
+Traccar REST/WebSocket,GPS architecture,app/traccar.py + app/gps.py,test_real_traccar_rest_socket_feed_and_three_vehicle_mapping
+Telemetry/ACC,GPS-01/02/03 + locked engine rules,normalize + engine_state + snapshot/state event migration,test_gps.py + real feed
+Freshness,Owner decision C + DEC-015,NORMAL <=30 STALE >30 <=120 LOST >120 backend/web,test_gps.py + gps-ui.test.mjs + three real-feed UI badges
+History/stops/distance,GPS-02/04 + WEB-09,Traccar positions/report summary + gap segments + playback,test_gps.py + test_real_traccar.py + browser history
+Web live states,UX WEB-01/03/09/14,Next fleet console + Leaflet popup + HttpOnly BFF,browser verification + origin.test.mjs
+Migration,Technical Pack Alembic requirement,0002 auth_sessions/gps_snapshots/vehicle_state_events,isolated upgrade downgrade upgrade + integration rerun
+Audit/privacy,07_BAO_MAT + locked permissions,admin action audit + server-side RBAC + private tokens,test_m1_api.py + BFF cookie/CSRF smoke
+Outage/health,M1 mandatory Traccar outage test,503 readiness/live + last-position warning,verify_m1_stack.py --outage + browser
+Contract,M1 instruction OpenAPI sync,openapi/m1.openapi.json + supplied baseline unchanged,test_contract.py + foundation.test.mjs
+No M2+,M1 milestone boundary,No new delivery/trip/tracking/fuel/remote command endpoints,test_health.py + test_m1_api.py + scope review

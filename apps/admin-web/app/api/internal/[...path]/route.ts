@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "node:crypto";
+import { sameOrigin } from "../origin";
 
 const api = process.env.API_URL || "http://127.0.0.1:8000";
 const routes =
@@ -40,7 +41,11 @@ async function handle(
     return NextResponse.json({ detail: "Không tìm thấy API" }, { status: 404 });
   if (
     request.method !== "GET" &&
-    request.headers.get("origin") !== request.nextUrl.origin
+    !sameOrigin(
+      request.headers.get("origin"),
+      request.nextUrl.protocol,
+      request.headers.get("host"),
+    )
   ) {
     return NextResponse.json(
       { detail: "Nguồn yêu cầu không hợp lệ" },
