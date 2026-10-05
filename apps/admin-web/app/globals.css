@@ -368,3 +368,60 @@ th {
     align-items: start;
   }
 }
+.button-link {
+  display: inline-block;
+  color: white;
+  background: var(--color-primary);
+  padding: 12px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+}
+.dispatch-workspace .card {
+  margin-bottom: 24px;
+}
+textarea {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 12px;
+  font: inherit;
+  resize: vertical;
+}
+.dispatch-workspace th {
+  position: sticky;
+  top: 0;
+}
+.selection-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.selection-row input[type="checkbox"] {
+  width: 20px;
+  min-width: 20px;
+}
+.dispatch-workspace input[type="checkbox"] {
+  width: 20px;
+}
+.timeline li {
+  margin-bottom: 16px;
+  padding-left: 8px;
+}
+.timeline p {
+  margin: 8px 0;
+}
+.status-action {
+  margin: 16px 0;
+}
+.danger {
+  background: #b91c1c;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16px;
+}

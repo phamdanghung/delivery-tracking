@@ -87,6 +87,8 @@ services:
       TRACCAR_EMAIL: ${TRACCAR_EMAIL:-}
       TRACCAR_PASSWORD: ${TRACCAR_PASSWORD:-}
       JWT_SECRET: ${JWT_SECRET:-}
+      COMPANY_LATITUDE: ${COMPANY_LATITUDE:-}
+      COMPANY_LONGITUDE: ${COMPANY_LONGITUDE:-}
       CORS_ORIGINS: '["http://localhost:3000"]'
     ports: ["127.0.0.1:8000:8000"]
     depends_on:

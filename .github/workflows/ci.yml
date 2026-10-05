@@ -1,4 +1,4 @@
-name: M1 auth fleet GPS
+name: M2 delivery trip state
 on: [push, pull_request]
 jobs:
   frontend:

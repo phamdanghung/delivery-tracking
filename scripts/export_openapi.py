@@ -1,4 +1,4 @@
-"""Write the M1 contract from source without modifying the supplied baseline."""
+"""Write the current milestone contract without modifying supplied/M1 baselines."""
 
 import json
 import sys
@@ -8,8 +8,8 @@ root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(root / "apps/api"))
 from app.main import app  # noqa: E402
 
-destination = root / "openapi/m1.openapi.json"
+destination = root / "openapi/m2.openapi.json"
 destination.write_text(
     json.dumps(app.openapi(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
 )
-print("Updated versioned M1 contract:", destination.name)
+print("Updated versioned M2 contract:", destination.name)

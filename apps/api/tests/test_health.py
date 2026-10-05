@@ -34,14 +34,16 @@ def test_readiness_checks_every_dependency(monkeypatch, failed):
     assert "password" not in response.text
 
 
-def test_only_m1_business_routes_are_exposed():
+def test_only_authorized_m2_business_routes_are_exposed():
     paths = app.openapi()["paths"]
     assert "/api/v1/vehicles" in paths
     assert "/api/v1/auth/login" in paths
+    assert "/api/v1/deliveries" in paths
+    assert "/api/v1/trips" in paths
     assert not any(
         name in path
         for path in paths
-        for name in ("deliveries", "trips", "tracking", "fuel", "commands")
+        for name in ("optimize", "tracking", "fuel", "commands", "pod/photos")
     )
 
 

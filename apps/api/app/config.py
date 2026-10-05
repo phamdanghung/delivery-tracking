@@ -1,12 +1,12 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_ignore_empty=True)
     app_env: Literal["local", "test", "staging", "production"] = "local"
     database_url: SecretStr = SecretStr("")
     redis_url: SecretStr = SecretStr("redis://localhost:6379/0")
@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     jwt_access_seconds: int = 900
     jwt_refresh_seconds: int = 604800
     gps_poll_seconds: int = 5
+    company_latitude: float | None = Field(default=None, ge=-90, le=90, allow_inf_nan=False)
+    company_longitude: float | None = Field(default=None, ge=-180, le=180, allow_inf_nan=False)
     cors_origins: list[str] = ["http://localhost:3000"]
 
 

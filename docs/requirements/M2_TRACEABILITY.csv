@@ -1,0 +1,9 @@
+Requirement,Decision,Implementation,Verification
+ROUT-01,,deliveries + WEB-04/05,test_seven_orders_three_commitments_draft_overload_and_no_approval; test_validation_edit_filter_and_roles; UI Zalo/create/three commitment types
+ROUT-05,DEC-025; DEC-026,trips/trip_stops + WEB-06,test_config_missing_and_override_and_environment; test_concurrent_draft_assignment_single_winner; UI draft
+ASSET-01,DEC-025,trip warnings,test_seven_orders_three_commitments_draft_overload_and_no_approval; UI overload does not block save
+POD-03,DEC-010; DEC-011,reschedule proposals + WEB-08,test_forward_state_pod_guard_failed_proposal_confirmation_and_requeue; UI operator confirmation
+CANCEL,DEC-027,status + audit,test_cancel_permissions_reason_audit_and_stale_command; UI reason required
+ARRIVED correction,DEC-028,Deferred M4,No reverse transition or correction action in M2
+RBAC,,existing auth + scoped trip access,test_other_driver_cannot_read_or_mutate_assigned_delivery; UI DRIVER permission
+AT-03; AT-09; AT-12,,M2 real PostGIS fixtures,tests/test_m2_api.py + browser isolated PostGIS
