@@ -1,6 +1,6 @@
 # M2 FINAL
 
-Ngày: 06/10/2026. Branch: `codex/m2-delivery-trips`. Trạng thái: CHƯA CHỐT — đang xác minh CI remote; chưa có exception security cho M2.
+Ngày: 06/10/2026. Branch: `codex/m2-delivery-trips`. Trạng thái: **FAIL — chỉ còn security exception chưa được phê duyệt cho M2**. Các kiểm tra kỹ thuật và CI remote PASS.
 
 ## 1. Phần đã triển khai
 
@@ -31,13 +31,17 @@ Ngày: 06/10/2026. Branch: `codex/m2-delivery-trips`. Trạng thái: CHƯA CHỐ
 | Health | API live/ready, web 200; DB/redis/storage/Traccar true, Redis PONG; MinIO signed write/read PASS, anonymous 403; `artifacts/m2-stack-health.json` |
 | Browser real DB | Zalo/create/three types, empty/loading, draft/overload/missing points, cancel reason/audit, proposal confirm, conflict 409/retry/data retained, DRIVER denied; screenshots `artifacts/m2-ui-*.png` |
 | Responsive | 360px form, 768px table: document width equals scroll width; screenshots inspected |
-| Local npm ci/mobile | Reuse M1 proof: dependency/lock/mobile source unchanged; remote CI will run clean install and Android/iOS export again |
+| npm ci/mobile | Remote CI M2 clean install và Android/iOS export PASS; 578/580 sources sạch; local reuse M1 do source/lock không đổi |
 
 UI test server uses its own real PostGIS database on loopback 18000/13000; fixtures are labelled simulated. Temporary DB/credentials removed after testing. Production/dev application data is not used for fixture state promotion.
 
+Docker Desktop dừng ở phiên cuối và gặp socket runtime stale (`sailor-ingest.sock`, `engine.sock`). Đã sao lưu các thư mục socket tạm, khởi động lại Desktop; **Engine 29.7.2**, Compose up --wait và health sâu **PASS** sau phục hồi (`artifacts/m2-stack-restored.log`, `m2-stack-restored-health.log`). Không reset/factory reset, không xóa volumes/WSL/database vận hành. Database UI riêng `fleet_m2_ui_6576e996b999` đã được kiểm tra đúng fixture trước khi drop, credentials tạm đã xóa.
+
 ## 4. CI remote
 
-CHƯA XÁC MINH cho M2 tại thời điểm tạo báo cáo; sẽ cập nhật SHA/run/log thực tế sau push. Local tests không thay bằng chứng CI.
+Source SHA `a499916d3ff65cb54d36f908a6071fd53ab97f67`: **PASS**, [run 37386191987](https://github.com/phamdanghung/delivery-tracking/actions/runs/37386191987), frontend/backend completed/success. Đã tải và đọc log thực tế `artifacts/m2-ci-frontend.log` và `m2-ci-backend.log`: npm ci 765 packages, audit 19 high hiện rõ; shared 7 PASS; web build và 18 traces sạch; Android/iOS export và 578/580 sources sạch; backend 55 PASS, downgrade/upgrade và integration rerun 13 PASS. Local tests không thay bằng chứng CI.
+
+[Draft PR #1](https://github.com/phamdanghung/delivery-tracking/pull/1) so với branch M1; chưa merge. Commit tiếp theo chỉ cập nhật tài liệu nghiệm thu/decision nếu được phê duyệt.
 
 ## 5. Điểm chưa xác minh / giới hạn
 
@@ -47,10 +51,10 @@ CHƯA XÁC MINH cho M2 tại thời điểm tạo báo cáo; sẽ cập nhật S
 
 ## 6. Security / quyết định cần chủ dự án
 
-Audit hiện tại: 19 high, 0 critical, cùng hai root advisory `braces GHSA-vfj7-8cjw-p6xm` và `node-forge GHSA-86w9-cpqp-85rv`; tooling/transitive Expo/Metro, chưa có bản vá tương thích tại lần rà soát. M2 không đổi dependency; web runtime gate 18 traces không có hai package. Mobile proof M1 578/580 sources sạch, CI sẽ kiểm tra lại.
+Audit hiện tại: 19 high, 0 critical, cùng hai root advisory `braces GHSA-vfj7-8cjw-p6xm` và `node-forge GHSA-86w9-cpqp-85rv`; tooling/transitive Expo/Metro, chưa có bản vá tương thích tại lần rà soát. M2 không đổi dependency; web runtime gate 18 traces không có hai package. CI M2 đã kiểm tra Android/iOS 578/580 sources sạch.
 
 DEC-024 chỉ cho M1 development/local/CI, **không áp dụng M2 hoặc production**. Chưa tự nhận exception M2, chưa coi advisory đã vá. Giữ audit và runtime gates, repo/config/cert tin cậy, Metro/Compose loopback, không force fix/downgrade/suppress. Cần chủ dự án quyết định riêng nếu chấp nhận tạm thời cho M2; review muộn nhất 02/11/2026 hoặc trước production, mốc sớm hơn; patch sớm cần full verification, runtime surface thay đổi phải dừng đánh giá.
 
 ## 7. Kết luận
 
-CHƯA CHỐT: còn CI remote và quyết định exception security riêng cho M2. Không chuyển M3.
+**FAIL tại thời điểm chốt báo cáo**: source/test/migration/build/export/Docker/health/CI đều PASS; chưa có phê duyệt chấp nhận tạm thời hai advisory riêng cho M2. Đây là security gate chưa được chủ dự án quyết định, không phải test FAIL. Không tự suy rộng DEC-024, không tự kết luận PASS WITH CONDITIONS. Chờ quyết định mới; không chuyển M3.
