@@ -9,6 +9,7 @@ Invoke-Check { npx.cmd --yes npm@12.2.0 run lint }
 Invoke-Check { npx.cmd --yes npm@12.2.0 run typecheck }
 Invoke-Check { npx.cmd --yes npm@12.2.0 test }
 Invoke-Check { npx.cmd --yes npm@12.2.0 run build:web }
+Invoke-Check { node scripts/verify_web_surface.mjs }
 Invoke-Check { npx.cmd --yes npm@12.2.0 run build:mobile }
 Invoke-Check { node scripts/verify_mobile_surface.mjs }
 Invoke-Check { python -m uv sync --project apps/api --frozen --python 3.12.12 }

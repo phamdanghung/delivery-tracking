@@ -16,6 +16,7 @@ jobs:
       - run: npm test
       - run: npm run build:web
         env: {NEXT_TELEMETRY_DISABLED: '1'}
+      - run: node scripts/verify_web_surface.mjs
       - run: npm run build:mobile
       - run: node scripts/verify_mobile_surface.mjs
   backend:
