@@ -1,6 +1,6 @@
 # M2 FINAL
 
-Ngày: 06/10/2026. Branch: `codex/m2-delivery-trips`. Trạng thái: **FAIL — chỉ còn security exception chưa được phê duyệt cho M2**. Các kiểm tra kỹ thuật và CI remote PASS.
+Ngày: 06/10/2026. Branch: `codex/m2-delivery-trips`. Trạng thái: **PASS WITH ACCEPTED RISK** theo DEC-029. Các kiểm tra kỹ thuật và CI remote PASS.
 
 ## 1. Phần đã triển khai
 
@@ -41,7 +41,7 @@ Docker Desktop dừng ở phiên cuối và gặp socket runtime stale (`sailor-
 
 Source SHA `a499916d3ff65cb54d36f908a6071fd53ab97f67`: **PASS**, [run 37386191987](https://github.com/phamdanghung/delivery-tracking/actions/runs/37386191987), frontend/backend completed/success. Đã tải và đọc log thực tế `artifacts/m2-ci-frontend.log` và `m2-ci-backend.log`: npm ci 765 packages, audit 19 high hiện rõ; shared 7 PASS; web build và 18 traces sạch; Android/iOS export và 578/580 sources sạch; backend 55 PASS, downgrade/upgrade và integration rerun 13 PASS. Local tests không thay bằng chứng CI.
 
-[Draft PR #1](https://github.com/phamdanghung/delivery-tracking/pull/1) so với branch M1; chưa merge. Commit tiếp theo chỉ cập nhật tài liệu nghiệm thu/decision nếu được phê duyệt.
+[Draft PR #1](https://github.com/phamdanghung/delivery-tracking/pull/1) so với branch M1; chưa merge. Cập nhật DEC-029 và kết luận chỉ thay tài liệu; source/dependency/workflow đã xác minh giữ nguyên. Không chạy lại full suite/build/export chỉ vì cập nhật tài liệu theo CODEX_TOKEN_RULES.md.
 
 ## 5. Điểm chưa xác minh / giới hạn
 
@@ -49,12 +49,18 @@ Source SHA `a499916d3ff65cb54d36f908a6071fd53ab97f67`: **PASS**, [run 3738619198
 - Optimization/ETA/approval M3, offline/geofence/correction M4, upload POD M5, customer tracking M6 chưa triển khai theo phạm vi khóa.
 - Tọa độ công ty chưa được cung cấp; hệ thống báo thiếu cấu hình và chặn lưu thiếu điểm. Không đưa tọa độ giả vào ENV.
 
-## 6. Security / quyết định cần chủ dự án
+## 6. Security / phê duyệt rủi ro có điều kiện
 
 Audit hiện tại: 19 high, 0 critical, cùng hai root advisory `braces GHSA-vfj7-8cjw-p6xm` và `node-forge GHSA-86w9-cpqp-85rv`; tooling/transitive Expo/Metro, chưa có bản vá tương thích tại lần rà soát. M2 không đổi dependency; web runtime gate 18 traces không có hai package. CI M2 đã kiểm tra Android/iOS 578/580 sources sạch.
 
-DEC-024 chỉ cho M1 development/local/CI, **không áp dụng M2 hoặc production**. Chưa tự nhận exception M2, chưa coi advisory đã vá. Giữ audit và runtime gates, repo/config/cert tin cậy, Metro/Compose loopback, không force fix/downgrade/suppress. Cần chủ dự án quyết định riêng nếu chấp nhận tạm thời cho M2; review muộn nhất 02/11/2026 hoặc trước production, mốc sớm hơn; patch sớm cần full verification, runtime surface thay đổi phải dừng đánh giá.
+Ngày 06/10/2026, chủ dự án phê duyệt riêng **DEC-029** cho hai advisory trên trong **M2 development/local/CI hiện tại**. Giữ nguyên DEC-023/024; không áp dụng production hoặc milestone khác, không xem advisory đã vá và không bỏ qua kiểm soát bảo mật khác.
+
+Điều kiện: chỉ repo/config/cert tin cậy; Metro và Docker/Compose chỉ expose cần thiết/loopback; không `npm audit fix --force`, không downgrade Expo/React Native để đưa audit về 0, không suppress/ẩn advisory; giữ npm audit và runtime-surface gates trong CI/report.
+
+Review muộn nhất **02/11/2026** hoặc trước production, mốc sớm hơn. Upstream có patch sớm: ưu tiên nâng và chạy lại đầy đủ npm ci, build, Android/iOS export, test, Docker/stack/health và CI remote. Advisory vào runtime attack surface thực tế ở milestone sau: dừng phần liên quan và đánh giá lại.
+
+Không còn quyết định security chặn đóng M2 trong phạm vi được duyệt; production vẫn ngoài phê duyệt.
 
 ## 7. Kết luận
 
-**FAIL tại thời điểm chốt báo cáo**: source/test/migration/build/export/Docker/health/CI đều PASS; chưa có phê duyệt chấp nhận tạm thời hai advisory riêng cho M2. Đây là security gate chưa được chủ dự án quyết định, không phải test FAIL. Không tự suy rộng DEC-024, không tự kết luận PASS WITH CONDITIONS. Chờ quyết định mới; không chuyển M3.
+**PASS WITH ACCEPTED RISK** theo DEC-029: source/test/migration/build/export/Docker/health/CI đều PASS; hai advisory chưa vá được chủ dự án chấp nhận tạm thời có điều kiện, chỉ M2 development/local/CI. **M2 đủ điều kiện đóng trong phạm vi này.** Draft PR chưa merge; không chuyển M3 khi chưa có chỉ thị.
