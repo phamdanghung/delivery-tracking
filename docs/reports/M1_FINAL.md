@@ -1,6 +1,6 @@
 # M1 FINAL — Users / Fleet / GPS / Traccar
 
-Ngày nghiệm thu: 05/10/2026 (Asia/Bangkok). Nhánh `codex/m1-auth-fleet-gps`. M0 vẫn **PASS WITH ACCEPTED RISK**; không làm lại M0 hoặc chuyển M2.
+Ngày nghiệm thu: 05/10/2026 (Asia/Bangkok). Nhánh `codex/m1-auth-fleet-gps`. M1 **PASS WITH ACCEPTED RISK** theo DEC-024; M0 giữ nguyên trạng thái theo DEC-023. Không làm lại M0 hoặc chuyển M2.
 
 ## 1. Phạm vi đã triển khai
 
@@ -105,7 +105,7 @@ Audit kiểm tra lại ngày 05/10: **19 high, 0 critical**, do 2 advisory root,
 
 19 nodes bị npm đánh dấu gồm Expo/RN runtime parents và Metro/CLI/lint parents; không lấy nhãn npm prod/dev làm bằng chứng runtime. Kiểm tra **11 Next server traces** của Docker build mới không có braces/node-forge; Android/iOS source maps lần lượt 578/580 sources không có advisory package source. Expo runtime loader được kiểm tra riêng theo gate M0; không đồng nhất loader với certificate/CLI tooling. Docker dev image vẫn cài tooling, chưa được tuyên bố production-safe.
 
-UUID của xcode giữ override 11.1.1 đã xử lý tại M0. M1 thêm Leaflet/@types và PyJWT/Argon2 dependencies; không xuất hiện advisory npm mới. CI giữ audit trong npm ci/log và thêm gate web/mobile: advisory root đi vào bundle/traces sẽ FAIL. Accepted risk M0 **không tự mở rộng sang M1**; xem mục 13–14.
+UUID của xcode giữ override 11.1.1 đã xử lý tại M0. M1 thêm Leaflet/@types và PyJWT/Argon2 dependencies; không xuất hiện advisory npm mới. CI giữ audit trong npm ci/log và thêm gate web/mobile: advisory root đi vào bundle/traces sẽ FAIL. Chủ dự án đã phê duyệt exception riêng cho M1 tại DEC-024; hai advisory **chưa được vá**, chỉ được chấp nhận tạm thời trong phạm vi đã duyệt.
 
 ## 9. Docker/stack/health
 
@@ -118,6 +118,8 @@ Khi Traccar thật dừng, readiness/live GPS trả 503 đúng; restart hồi ph
 Repository: https://github.com/phamdanghung/delivery-tracking.git. Workflow `M1 auth fleet GPS`, hai job frontend/backend, services PostGIS và Traccar thật, test/export/upgrade-downgrade-upgrade/integration rerun và runtime-surface gates.
 
 CI checkpoint của source `640ef3cb293f51f628bee2245ed8d69382c81755`: **PASS**, [run 37323566867](https://github.com/phamdanghung/delivery-tracking/actions/runs/37323566867), cả frontend và backend completed/success. Đã tải và đọc log thực tế: backend 44 PASS, migration round-trip và integration rerun 3 PASS; frontend 5 PASS, clean install/build/export thành công, 11 server traces và 578/580 mobile sources đạt runtime gates. Audit 19 high vẫn hiện trong log. Local tests không thay bằng chứng CI. Commit bàn giao báo cáo sau checkpoint này chỉ thay tài liệu.
+
+CI của commit bàn giao `e8438d92a9c0aea309372ddb2019ce7f309ae4fa` cũng **PASS** cả frontend/backend: [run 37324651082](https://github.com/phamdanghung/delivery-tracking/actions/runs/37324651082). Cập nhật DEC-024/kết luận chỉ thay tài liệu, giữ nguyên source/dependency/workflow đã xác minh; không cần chạy lại kiểm tra tốn tài nguyên chỉ vì cập nhật tài liệu.
 
 ## 11. Các file chính đã thay đổi
 
@@ -132,20 +134,20 @@ CI checkpoint của source `640ef3cb293f51f628bee2245ed8d69382c81755`: **PASS**,
 - Chưa có GPS vật lý: chưa nghiệm thu protocol thiết bị thực, tín hiệu ACC/dây đấu, GNSS ngoài hiện trường, GPS/SIM mất mạng hoặc độ chính xác quãng đường thực.
 - Chưa build native APK/IPA/chạy điện thoại; M1 chỉ giữ skeleton và export bundle M0.
 - Chưa nghiệm thu production: TLS/hosting/provider map/credentials/backup/security hardening và rủi ro advisory production phải review riêng.
-- Phê duyệt exception advisory riêng cho M1 còn thiếu. CI source đã xác minh thành công tại mục 10.
+- Hai advisory còn tồn tại, được chấp nhận có điều kiện theo DEC-024; không coi là đã vá hoặc được phê duyệt production. CI source đã xác minh thành công tại mục 10.
 
 Các giới hạn hardware/native/production đã được tách khỏi bằng chứng M1 local/simulator theo chỉ thị; không tuyên bố đã nghiệm thu chúng.
 
 ## 13. Các điểm cần chủ dự án quyết định
 
-**Chặn kết luận M1 PASS:** DEC-023 trong PROJECT_DECISIONS ghi accepted risk “chỉ M0”; hai advisory tooling vẫn hiện diện và chưa có patch phù hợp. Đã chứng minh chúng không có trong runtime bundles/traces đã kiểm tra, nhưng không tự quyết định chấp nhận cho milestone mới. Cần chủ dự án phê duyệt rõ M1 development/local/CI nếu muốn tiếp tục dùng cùng exception; không áp dụng production.
+**Đã chốt:** ngày 05/10/2026, chủ dự án phê duyệt riêng M1 development/local/CI tại **DEC-024** cho braces GHSA-vfj7-8cjw-p6xm và node-forge GHSA-86w9-cpqp-85rv. DEC-023 của M0 giữ nguyên. Không còn quyết định advisory chặn đóng M1; không áp dụng production hoặc tự mở rộng sang milestone khác.
 
-Đề xuất giữ nguyên toàn bộ điều kiện M0: repo/config/cert đáng tin cậy; Metro loopback; Docker không expose thừa; không force/downgrade/suppress; giữ audit/gates/report. Review trước **03/11/2026 (muộn nhất 02/11)** hoặc trước production, mốc sớm hơn. Có patch sớm: ưu tiên nâng và chạy lại ci/build/export/test/Docker/CI. Advisory vào runtime thực tế: dừng và đánh giá lại.
+Điều kiện bắt buộc theo DEC-024: repo/config/cert đáng tin cậy; Metro loopback; Docker không expose thừa; không force/downgrade Expo/React Native/suppress; giữ audit và runtime-surface gates trong CI/report, không miễn trừ kiểm soát khác. Review trước **03/11/2026 (muộn nhất 02/11/2026)** hoặc trước production, mốc sớm hơn. Có patch sớm: ưu tiên nâng và chạy lại npm ci, build, Android/iOS export, test, Docker/stack/health và CI remote. Advisory vào runtime thực tế ở milestone sau: dừng phần liên quan và đánh giá lại.
 
 Sau review M1, cần chỉ thị riêng trước M2. Chọn/đấu thiết bị GPS và basemap production là quyết định triển khai sau, không được suy rộng từ simulator/local.
 
-## 14. Kết luận M1: FAIL
+## 14. Kết luận M1: PASS WITH ACCEPTED RISK
 
-**FAIL ở cổng phê duyệt rủi ro M1**, không tự lấy accepted risk của M0 làm phê duyệt M1. Các hạng mục kỹ thuật local/simulator và hai job CI remote đã đạt. Không có thay đổi nghiệp vụ hoặc kiến trúc ngoài phạm vi M1 được phát hiện sau đối chiếu/kiểm thử.
+**PASS WITH ACCEPTED RISK** theo phê duyệt rõ của chủ dự án tại DEC-024. Các hạng mục kỹ thuật local/simulator và hai job CI remote đã đạt; hai advisory vẫn tồn tại và chịu các điều kiện/theo dõi trên. Không có thay đổi nghiệp vụ hoặc kiến trúc ngoài phạm vi M1 được phát hiện sau đối chiếu/kiểm thử.
 
-Không chuyển M2. Bàn giao source và bằng chứng để chủ dự án review; chỉ cập nhật kết luận khi có quyết định exception M1 rõ ràng.
+M1 đã đủ điều kiện đóng trong phạm vi development/local/CI đã duyệt. Không chuyển M2; chờ chỉ thị riêng của chủ dự án. Không tuyên bố nghiệm thu GPS vật lý/native app/production.

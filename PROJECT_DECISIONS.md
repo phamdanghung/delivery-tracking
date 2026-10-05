@@ -213,6 +213,28 @@ Nếu advisory đi vào runtime attack surface thực tế:
 Trạng thái M0:
 - PASS WITH ACCEPTED RISK.
 
+### DEC-024 — Accepted Risk cho M1
+- Ngày chốt: 05/10/2026.
+- Milestone liên quan: M1.
+- Quyết định: chủ dự án phê duyệt chấp nhận tạm thời braces GHSA-vfj7-8cjw-p6xm và node-forge GHSA-86w9-cpqp-85rv; M1 **PASS WITH ACCEPTED RISK**.
+- Phạm vi: chỉ M1 và development/local/CI hiện tại.
+- Không áp dụng cho: production hoặc milestone khác. Không xem advisory là đã được vá, không miễn trừ kiểm soát bảo mật khác.
+- Ghi chú: quyết định riêng cho M1; giữ nguyên DEC-023 và lịch sử M0. Không tự chuyển sang M2.
+
+Điều kiện bắt buộc:
+- chỉ dùng repo/config/cert đáng tin cậy;
+- Metro chỉ local/loopback;
+- Docker không expose service không cần thiết;
+- không dùng `npm audit fix --force`;
+- không downgrade Expo/React Native chỉ để làm audit về 0;
+- không suppress hoặc che advisory;
+- tiếp tục giữ npm audit và runtime-surface gates trong CI/report.
+
+Theo dõi:
+- Review trước 03/11/2026, tức muộn nhất 02/11/2026, hoặc trước production, tùy mốc nào đến trước.
+- Nếu upstream có bản vá sớm hơn: ưu tiên nâng cấp và chạy lại đầy đủ npm ci, build, Android/iOS export, test, Docker/stack/health và CI remote.
+- Nếu advisory xuất hiện trong runtime attack surface thực tế ở milestone sau: dừng phần liên quan và đánh giá lại, không suy rộng quyết định này.
+
 ## 14. Milestone boundaries
 
 ### M0
