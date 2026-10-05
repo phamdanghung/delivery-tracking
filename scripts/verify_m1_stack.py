@@ -1,5 +1,6 @@
 """Verify real M1 services using scoped simulated GPS fixtures, never physical GPS."""
 
+import asyncio
 import json
 import secrets
 import subprocess
@@ -69,7 +70,7 @@ with httpx.Client(timeout=20, trust_env=False) as client:
                 fixture.write_text(json.dumps(records, indent=2))
         if mode in ("--prepare-ui", "--feed-ui"):
             checks = []
-            for index, record in enumerate(records):
+            for index, record in reversed(list(enumerate(records))):
                 response = client.get(
                     "http://127.0.0.1:5055",
                     params={
@@ -112,6 +113,68 @@ with httpx.Client(timeout=20, trust_env=False) as client:
                     indent=2,
                 )
             )
+        elif mode == "--web-security":
+            web = "http://127.0.0.1:3000/api/internal"
+            credentials = {
+                "email": values["BOOTSTRAP_ADMIN_EMAIL"],
+                "password": values["BOOTSTRAP_ADMIN_PASSWORD"],
+            }
+            with httpx.Client(timeout=20, trust_env=False) as browser:
+                assert (
+                    browser.post(
+                        web + "/auth/login",
+                        headers={"Origin": "http://foreign.invalid"},
+                        json=credentials,
+                    ).status_code
+                    == 403
+                )
+                assert browser.post(web + "/auth/login", json=credentials).status_code == 403
+                response = browser.post(
+                    web + "/auth/login",
+                    headers={"Origin": "http://127.0.0.1:3000"},
+                    json=credentials,
+                )
+                response.raise_for_status()
+                assert set(response.json()) == {"user"} and "token" not in response.text
+                assert all(
+                    "HttpOnly" in cookie and "SameSite=strict" in cookie
+                    for cookie in response.headers.get_list("set-cookie")
+                )
+                assert browser.get(web + "/vehicles").status_code == 200
+                # Force an access-token refresh without exposing tokens to browser JS.
+                for cookie in list(browser.cookies.jar):
+                    if cookie.name == "fleet_access":
+                        browser.cookies.delete(cookie.name, domain=cookie.domain, path=cookie.path)
+
+                async def concurrent_refresh():
+                    async with httpx.AsyncClient(
+                        timeout=20, trust_env=False, cookies=browser.cookies
+                    ) as concurrent:
+                        responses = await asyncio.gather(
+                            *(
+                                concurrent.get(web + path)
+                                for path in ("/auth/me", "/vehicles", "/drivers")
+                            )
+                        )
+                        assert all(item.status_code == 200 for item in responses)
+                        return concurrent.cookies
+
+                browser.cookies = asyncio.run(concurrent_refresh())
+                response = browser.post(
+                    web + "/auth/logout", headers={"Origin": "http://127.0.0.1:3000"}, json={}
+                )
+                assert response.status_code == 204
+                assert browser.get(web + "/auth/me").status_code == 401
+            report = {
+                "same_origin_login": "PASS",
+                "foreign_missing_origin_rejected": "PASS",
+                "HttpOnly_SameSite_Strict": "PASS",
+                "tokens_absent_response": "PASS",
+                "concurrent_refresh_rotation": "PASS",
+                "logout_revokes_session": "PASS",
+            }
+            (root / "artifacts/m1-web-security.json").write_text(json.dumps(report, indent=2))
+            print(json.dumps(report, indent=2))
         elif mode == "--prepare-accounts":
             assert not accounts_file.exists(), "Clean up previous UI test accounts first"
             accounts = []
@@ -131,6 +194,22 @@ with httpx.Client(timeout=20, trust_env=False) as client:
                 accounts.append(account)
                 accounts_file.write_text(json.dumps(accounts, indent=2))
             print("Created scoped simulated UI roles; credentials remain in ignored artifacts.")
+        elif mode == "--expire-dispatcher":
+            account = next(
+                item
+                for item in json.loads(accounts_file.read_text())
+                if item["role"] == "DISPATCHER"
+            )
+            assert account["email"].startswith("m1-ui-") and account["email"].endswith(
+                "@verification.local"
+            )
+            response = client.patch(
+                base + f"/users/{account['id']}", headers=headers, json={"is_active": False}
+            )
+            response.raise_for_status()
+            print(
+                "Revoked only the scoped simulated DISPATCHER for the real session-expiry UI check."
+            )
         elif mode == "--outage":
             assert records, "Prepare scoped fixtures before the outage verification"
             try:

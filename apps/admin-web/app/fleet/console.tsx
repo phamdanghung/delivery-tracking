@@ -101,6 +101,10 @@ export default function FleetConsole({
     [error, setError] = useState("");
   const [show, setShow] = useState(false),
     [busy, setBusy] = useState(false);
+  const expire = useCallback(() => {
+    setUser(null);
+    setError("Phiên đăng nhập đã hết hiệu lực. Vui lòng đăng nhập lại.");
+  }, []);
   useEffect(() => {
     api<User>("auth/me")
       .then(setUser)
@@ -238,7 +242,12 @@ export default function FleetConsole({
             </p>
           </main>
         ) : (
-          <FleetData user={user} view={view} vehicleId={vehicleId} />
+          <FleetData
+            user={user}
+            view={view}
+            vehicleId={vehicleId}
+            onExpired={expire}
+          />
         )}
       </div>
     </div>
@@ -248,10 +257,12 @@ function FleetData({
   user,
   view,
   vehicleId,
+  onExpired,
 }: {
   user: User;
   view: string;
   vehicleId?: string;
+  onExpired: () => void;
 }) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]),
     [drivers, setDrivers] = useState<Driver[]>([]),
@@ -277,7 +288,11 @@ function FleetData({
     [playback, setPlayback] = useState(0),
     [distance, setDistance] = useState<number | null>(null);
   const historyForm = useRef<HTMLFormElement>(null);
+  const [actionError, setActionError] = useState("");
+  const polling = useRef(false);
   const refresh = useCallback(async () => {
+    if (polling.current) return;
+    polling.current = true;
     try {
       if (view === "users") setUsers(await api<User[]>("users"));
       else {
@@ -291,6 +306,8 @@ function FleetData({
               setLive((p) => ({ ...p, [vehicle.id]: data }));
               setOutages((p) => ({ ...p, [vehicle.id]: false }));
             } catch (value) {
+              if (value instanceof ApiError && value.status === 401)
+                onExpired();
               setOutages((p) => ({ ...p, [vehicle.id]: true }));
               if (value instanceof ApiError && value.status === 403)
                 setPermission(true);
@@ -300,6 +317,7 @@ function FleetData({
       }
       setError("");
     } catch (value) {
+      if (value instanceof ApiError && value.status === 401) onExpired();
       setError(message(value));
       if (value instanceof ApiError && value.status === 403)
         setPermission(true);
@@ -307,9 +325,10 @@ function FleetData({
         Object.fromEntries(Object.keys(p).map((key) => [key, true])),
       );
     } finally {
+      polling.current = false;
       setLoading(false);
     }
-  }, [view]);
+  }, [view, onExpired]);
   useEffect(() => {
     let active = true;
     queueMicrotask(() => {
@@ -361,7 +380,7 @@ function FleetData({
   async function saveVehicle(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
-    setError("");
+    setActionError("");
     const f = new FormData(event.currentTarget),
       number = (key: string) => (f.get(key) ? Number(f.get(key)) : null);
     const data = {
@@ -383,7 +402,7 @@ function FleetData({
       setEditing(null);
       await refresh();
     } catch (value) {
-      setError(message(value));
+      setActionError(message(value));
     } finally {
       setBusy(false);
     }
@@ -391,18 +410,18 @@ function FleetData({
   async function openVehicle(vehicle: Vehicle | null) {
     setEditing(vehicle);
     setFormOpen(true);
-    setError("");
+    setActionError("");
     try {
       setDevices(await api("gps/devices"));
     } catch (value) {
-      setError(message(value));
+      setActionError(message(value));
     }
   }
   async function saveUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const element = event.currentTarget;
     setBusy(true);
-    setError("");
+    setActionError("");
     const f = new FormData(element);
     try {
       await api("users", "POST", {
@@ -415,7 +434,7 @@ function FleetData({
       element.reset();
       await refresh();
     } catch (value) {
-      setError(message(value));
+      setActionError(message(value));
     } finally {
       setBusy(false);
     }
@@ -432,7 +451,7 @@ function FleetData({
       await api(`users/${item.id}`, "PATCH", { is_active: !item.is_active });
       await refresh();
     } catch (value) {
-      setError(message(value));
+      setActionError(message(value));
     } finally {
       setBusy(false);
     }
@@ -449,7 +468,7 @@ function FleetData({
       await api(`vehicles/${vehicle.id}`, "DELETE");
       await refresh();
     } catch (value) {
-      setError(message(value));
+      setActionError(message(value));
     } finally {
       setBusy(false);
     }
@@ -526,6 +545,11 @@ function FleetData({
           <button className="secondary" onClick={() => void refresh()}>
             Thử lại
           </button>
+        </div>
+      )}
+      {actionError && (
+        <div role="alert" className="error">
+          {actionError}
         </div>
       )}
       {view === "users" ? (
@@ -756,8 +780,8 @@ function FleetData({
                     </span>
                     {outages[vehicle.id] && (
                       <p role="alert" className="error">
-                        Không kết nối được Traccar. Vị trí cuối không phải dữ
-                        liệu trực tiếp.
+                        Không nhận được dữ liệu GPS từ hệ thống. Vị trí cuối
+                        không phải dữ liệu trực tiếp.
                       </p>
                     )}
                     <p>

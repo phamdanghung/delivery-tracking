@@ -23,6 +23,7 @@ export default function FleetMap({
   const framed = useRef<string | null>(null);
   const [ready, setReady] = useState(false);
   const [tileError, setTileError] = useState(false);
+  const contentKey = JSON.stringify({ points, segments });
   useEffect(() => {
     let cancelled = false;
     import("leaflet").then((L) => {
@@ -49,15 +50,19 @@ export default function FleetMap({
   }, []);
   useEffect(() => {
     if (!ready) return;
+    const { points: currentPoints, segments: currentSegments } = JSON.parse(
+      contentKey,
+    ) as { points: MapPoint[]; segments: MapPoint[][] };
     let cancelled = false;
     import("leaflet").then((L) => {
       if (cancelled || !map.current || !layer.current) return;
       layer.current.clearLayers();
-      for (const point of points) {
+      for (const point of currentPoints) {
         const label = document.createElement("span");
         label.textContent = point.label;
         const popup = document.createElement("div");
         popup.style.whiteSpace = "pre-line";
+        popup.style.width = "min(240px, calc(100vw - 160px))";
         popup.textContent =
           point.label + (point.details ? "\n" + point.details : "");
         L.circleMarker([point.latitude, point.longitude], {
@@ -68,19 +73,19 @@ export default function FleetMap({
           dashArray: point.stale ? "4 4" : undefined,
         })
           .bindTooltip(label, { permanent: point.selected })
-          .bindPopup(popup)
+          .bindPopup(popup, { maxHeight: 260 })
           .addTo(layer.current);
       }
-      for (const segment of segments) {
+      for (const segment of currentSegments) {
         L.polyline(
           segment.map((p) => [p.latitude, p.longitude] as [number, number]),
           { color: "#0F6CBD" },
         ).addTo(layer.current);
       }
-      const coordinates = [...points, ...segments.flat()].map((p) =>
-        L.latLng(p.latitude, p.longitude),
+      const coordinates = [...currentPoints, ...currentSegments.flat()].map(
+        (p) => L.latLng(p.latitude, p.longitude),
       );
-      const selection = points
+      const selection = currentPoints
         .filter((p) => p.selected)
         .map((p) => p.label.split(" · ")[0])
         .join("|");
@@ -95,7 +100,7 @@ export default function FleetMap({
     return () => {
       cancelled = true;
     };
-  }, [points, segments, ready]);
+  }, [contentKey, ready]);
   return (
     <div className="map-frame">
       {!ready && <p role="status">Đang tải bản đồ…</p>}
