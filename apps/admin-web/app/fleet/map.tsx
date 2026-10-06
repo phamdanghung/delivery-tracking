@@ -9,6 +9,7 @@ type MapPoint = {
   details?: string;
   stale?: boolean;
   selected?: boolean;
+  numbered?: boolean;
 };
 export default function FleetMap({
   points,
@@ -72,7 +73,7 @@ export default function FleetMap({
           fillOpacity: point.stale ? 0.35 : 0.85,
           dashArray: point.stale ? "4 4" : undefined,
         })
-          .bindTooltip(label, { permanent: point.selected })
+          .bindTooltip(label, { permanent: point.selected || point.numbered })
           .bindPopup(popup, { maxHeight: 260 })
           .addTo(layer.current);
       }

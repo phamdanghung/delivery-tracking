@@ -15,6 +15,7 @@ dependencies = [
   "pyjwt>=2.10,<3",
   "argon2-cffi>=25,<26",
   "websockets>=17,<18",
+  "ortools>=9.14,<10",
 ]
 
 [dependency-groups]

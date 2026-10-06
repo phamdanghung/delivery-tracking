@@ -425,3 +425,28 @@ textarea {
   align-items: center;
   gap: 16px;
 }
+/* WEB-07: route map 65%, summary 35%; stack on narrow screens. */
+.route-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 65fr) minmax(300px, 35fr);
+  gap: var(--space-4, 16px);
+  align-items: start;
+}
+.route-map,
+.route-summary {
+  min-width: 0;
+}
+.route-summary input {
+  width: 100%;
+}
+.route-summary button {
+  margin-top: 12px;
+}
+.route-summary .timeline {
+  padding-left: 20px;
+}
+@media (max-width: 960px) {
+  .route-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

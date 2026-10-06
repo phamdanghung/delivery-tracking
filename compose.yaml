@@ -1,5 +1,15 @@
 name: fleet-delivery
 services:
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v6.0.0
+    command: ["osrm-routed", "--algorithm", "mld", "/data/map.osrm"]
+    ports: ["127.0.0.1:${OSRM_PORT:-5000}:5000"]
+    volumes: ["./artifacts/osrm:/data:ro"]
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "5000"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
   postgres:
     image: postgis/postgis:16-3.5
     environment:
@@ -89,8 +99,15 @@ services:
       JWT_SECRET: ${JWT_SECRET:-}
       COMPANY_LATITUDE: ${COMPANY_LATITUDE:-}
       COMPANY_LONGITUDE: ${COMPANY_LONGITUDE:-}
+      OSRM_URL: http://osrm:5000
+      OSRM_METADATA_PATH: /osrm-data/metadata.json
+      FIXED_TIME_TOLERANCE_SECONDS: ${FIXED_TIME_TOLERANCE_SECONDS:-900}
+      DEFAULT_SERVICE_SECONDS: ${DEFAULT_SERVICE_SECONDS:-600}
+      ROUTE_SOLVER_SECONDS: ${ROUTE_SOLVER_SECONDS:-3}
+      OSRM_TIMEOUT_SECONDS: ${OSRM_TIMEOUT_SECONDS:-10}
       CORS_ORIGINS: '["http://localhost:3000"]'
     ports: ["127.0.0.1:8000:8000"]
+    volumes: ["./artifacts/osrm:/osrm-data:ro"]
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}

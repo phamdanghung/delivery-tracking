@@ -4,7 +4,7 @@ import { sameOrigin } from "../origin";
 
 const api = process.env.API_URL || "http://127.0.0.1:8000";
 const routes =
-  /^(auth\/(login|logout|me)|users(?:\/[0-9a-f-]+)?|vehicles(?:\/[0-9a-f-]+(?:\/(live|history|odometer))?)?|drivers(?:\/[0-9a-f-]+)?|gps\/devices|deliveries(?:\/[0-9a-f-]+(?:\/(status|reschedule))?)?|trips(?:\/(config|[0-9a-f-]+))?)$/;
+  /^(auth\/(login|logout|me)|users(?:\/[0-9a-f-]+)?|vehicles(?:\/[0-9a-f-]+(?:\/(live|history|odometer))?)?|drivers(?:\/[0-9a-f-]+)?|gps\/devices|routing\/config|deliveries(?:\/[0-9a-f-]+(?:\/(status|reschedule))?)?|trips(?:\/(config|[0-9a-f-]+(?:\/(optimize|optimization|approve))?))?)$/;
 type Tokens = {
   access_token: string;
   refresh_token: string;

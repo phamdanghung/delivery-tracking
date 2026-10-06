@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import TripOptimization from "./optimization";
 import {
   commitmentLabels,
   datetimePayload,
@@ -108,7 +109,13 @@ type Trip = {
   }[];
 };
 export type DispatchView =
-  "list" | "form" | "detail" | "trips" | "trip-form" | "trip-detail";
+  | "list"
+  | "form"
+  | "detail"
+  | "trips"
+  | "trip-form"
+  | "trip-detail"
+  | "optimization";
 const msg = (error: unknown) =>
   error instanceof Error ? error.message : "Không kết nối được hệ thống";
 const inputTime = (iso: string | null) =>
@@ -237,7 +244,7 @@ export default function DispatchWorkspace({
         if (view === "detail" || (view === "form" && entityId)) {
           const result = await api<Detail>(`deliveries/${entityId}`);
           if (alive) setDetail(result);
-        } else if (view === "trip-detail") {
+        } else if (view === "trip-detail" || view === "optimization") {
           const result = await api<Trip>(`trips/${entityId}`);
           if (alive) setTrip(result);
         } else if (view === "trips") {
@@ -303,6 +310,7 @@ export default function DispatchWorkspace({
     trips: "Chuyến giao",
     "trip-form": "Lập chuyến nháp",
     "trip-detail": "Chi tiết chuyến",
+    optimization: "Tối ưu tuyến",
   }[view];
   return (
     <main className="fleet-workspace dispatch-workspace">
@@ -767,10 +775,11 @@ export default function DispatchWorkspace({
                 {w}
               </p>
             ))}
-            <p className="warning">
-              Chuyến nháp chưa được duyệt/xuất. Duyệt chuyến sẽ mở sau khi có
-              tối ưu tuyến và ETA ở M3.
-            </p>
+            {trip.status === "DRAFT" && (
+              <Link className="primary" href={`/trips/${trip.id}/optimize`}>
+                Tối ưu tuyến và xem ETA trước khi duyệt
+              </Link>
+            )}
           </section>
           <section className="card">
             <h2>Các điểm giao theo thứ tự đã chọn</h2>
@@ -789,6 +798,9 @@ export default function DispatchWorkspace({
             </ol>
           </section>
         </>
+      )}
+      {!loading && view === "optimization" && trip && (
+        <TripOptimization trip={trip} api={api} onError={failure} />
       )}
     </main>
   );

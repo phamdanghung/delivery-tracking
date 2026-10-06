@@ -80,7 +80,7 @@ CI chạy lint, typecheck, test, build web, export bundle Android/iOS, migration
 - `packages/shared`: kiểu dữ liệu vận hành dùng chung và kiểm tra baseline.
 - `db/migrations/0001_baseline.sql`: bản sao nguyên vẹn SQL đã cung cấp.
 - `openapi/openapi.yaml`: bản sao nguyên vẹn OpenAPI nghiệp vụ.
-- `openapi/m1.openapi.json`: contract M1 sinh từ FastAPI; test đối chiếu source. Giữ snapshot M1 để kiểm tra tương thích. `uv run --project apps/api scripts/export_openapi.py` sinh contract M2 hiện tại vào `openapi/m2.openapi.json`.
+- `openapi/m1.openapi.json` và `openapi/m2.openapi.json`: snapshot giữ nguyên để kiểm tra tương thích. `python -m uv run --project apps/api scripts/export_openapi.py` sinh contract M3 hiện tại vào `openapi/m3.openapi.json`.
 - `infra/docker`, `compose.yaml`: dev stack.
 - `docs/specifications`: toàn bộ Technical Pack được giải nén, giữ nguyên nội dung.
 - `docs/requirements`: vấn đề phát hiện và truy vết M0.
@@ -101,3 +101,13 @@ ADMIN quản trị user/xe/mapping; DISPATCHER đọc fleet/GPS/history; DRIVER 
 Migration `0003` thêm trạng thái từng lần giao và đề xuất giao lại; baseline 0001/0002 giữ nguyên. `COMPANY_LATITUDE`/`COMPANY_LONGITUDE` trong `.env` cấu hình điểm công ty. Khi thiếu, web báo rõ và yêu cầu nhập điểm thay thế hợp lệ theo DEC-002; không tự geocode. Không đưa tọa độ giả vào cấu hình vận hành.
 
 Driver chỉ thấy chuyến đã duyệt của mình và chỉ đề xuất lịch giao lại. Điều phối xác nhận mới cập nhật đơn; DELIVERED vẫn cần ảnh POD trên storage thật, upload thuộc M5. Xem `openapi/m2.openapi.json` và `docs/reports/M2_FINAL.md` để đối chiếu contract/kết quả nghiệm thu.
+
+## M3 — tối ưu tuyến
+
+Áp dụng DEC-030–032 và `docs/requirements/M3_SCOPE.md`. WEB-07 tại `/trips/{id}/optimize`: nhập/xác nhận giờ xuất phát, ghi đè service theo stop, xem route OSRM, km/thời gian, ETA và mức vi phạm. Kết quả vi phạm được lưu (HTTP 422) nhưng không được duyệt; không override. Kết quả cũ khi input/config/dataset đổi phải tối ưu lại. Quá tải vẫn warning; duyệt hợp lệ chuyển DRAFT → PLANNED và đơn PLANNED → ASSIGNED với audit.
+
+`scripts/dev.ps1` chuẩn bị graph OSM thật và khởi động OSRM self-host, chỉ bind loopback. Nếu chuẩn bị riêng: `python scripts/prepare_osrm.py`, rồi `docker compose up -d --wait osrm`. Extract Saigon public dùng local/CI, được ghi nguồn/hash trong `artifacts/osrm/metadata.json`; không phải tọa độ công ty. Ghi attribution OSM/BBBike, ODbL. Thay vùng dữ liệu dùng `--url`/`--directory` riêng và cấu hình mount tương ứng, không tự gửi địa chỉ khách ra ngoài.
+
+ENV `OSRM_URL`, `OSRM_METADATA_PATH`, `FIXED_TIME_TOLERANCE_SECONDS=900`, `DEFAULT_SERVICE_SECONDS=600`, `ROUTE_SOLVER_SECONDS=3`, `OSRM_TIMEOUT_SECONDS=10`. Metadata path tương đối được tính từ repo root; Compose dùng URL internal và mount read-only. Provider chỉ kết nối địa chỉ local/private, không proxy/redirect và không fallback. `scripts/verify_osrm.py` xác minh table/route thật bằng tọa độ fixture public, độc lập với điểm công ty cấu hình.
+
+OR-Tools giữ thứ tự tối ưu số điểm vi phạm → km → thời gian. Ngân sách solver cấu hình được; nếu hết thời gian trước khi chứng minh tối ưu toàn cục, kết quả nêu cảnh báo và mục tiêu đã chứng minh. Hard time gate vẫn kiểm tra trước duyệt. CI có OSRM/PostGIS/Traccar thật, giữ `npm ci` audit và các runtime-surface gates. M3 không mở M4; accepted risk M2 không tự áp dụng M3.

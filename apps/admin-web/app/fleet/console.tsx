@@ -78,6 +78,14 @@ async function api<T>(
     ...(data === undefined ? {} : { body: JSON.stringify(data) }),
   });
   const body = response.status === 204 ? null : await response.json();
+  // Baseline optimize 422 carries a saved diagnostic plan, not form validation errors.
+  if (
+    response.status === 422 &&
+    path.endsWith("/optimize") &&
+    body?.id &&
+    Array.isArray(body.stops)
+  )
+    return body;
   if (!response.ok)
     throw new ApiError(
       response.status,

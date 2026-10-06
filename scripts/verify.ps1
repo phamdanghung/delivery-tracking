@@ -20,4 +20,5 @@ try {
     Invoke-Check { python -m uv run --frozen mypy app }
     Invoke-Check { python -m uv run --project . --frozen ../../scripts/verify_database.py }
     Invoke-Check { python -m uv run --project . --frozen ../../scripts/verify_stack.py }
+    Invoke-Check { python -m uv run --project . --frozen ../../scripts/verify_osrm.py }
 } finally { Pop-Location }

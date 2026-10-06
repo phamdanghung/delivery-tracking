@@ -21,6 +21,14 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'M1 credentials configuration failed.' }
 } finally { Pop-Location }
 if ($ConfigureOnly) { exit 0 }
+python scripts/prepare_osrm.py
+if ($LASTEXITCODE -ne 0) { throw 'Real OSRM graph preparation failed.' }
+$m3LocalEnv = Get-Content -LiteralPath '.env' -Raw
+foreach ($m3ConfigLine in @('OSRM_URL=http://127.0.0.1:5000', 'OSRM_METADATA_PATH=artifacts/osrm/metadata.json')) {
+    $m3ConfigKey = $m3ConfigLine.Split('=')[0]
+    if ($m3LocalEnv -notmatch "(?m)^$m3ConfigKey=") { $m3LocalEnv += "`n$m3ConfigLine`n" }
+}
+[IO.File]::WriteAllText((Join-Path $projectRoot '.env'), $m3LocalEnv)
 foreach ($service in @('minio', 'minio-init', 'api', 'admin-web')) {
     docker compose build $service
     if ($LASTEXITCODE -ne 0) { throw "Docker image build failed: $service" }

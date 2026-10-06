@@ -38,6 +38,8 @@ def command(*args: str, url: str, test: bool = False) -> None:
         TRACCAR_URL=settings.traccar_url,
         TRACCAR_EMAIL=settings.traccar_email,
         TRACCAR_PASSWORD=settings.traccar_password.get_secret_value(),
+        OSRM_URL=settings.osrm_url,
+        OSRM_METADATA_PATH=settings.osrm_metadata_path,
     )
     if test:
         environment["TEST_DATABASE_URL"] = url

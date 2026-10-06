@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     jwt_access_seconds: int = 900
     jwt_refresh_seconds: int = 604800
     gps_poll_seconds: int = 5
+    fixed_time_tolerance_seconds: int = Field(default=900, ge=0)
+    default_service_seconds: int = Field(default=600, ge=0)
+    route_solver_seconds: float = Field(default=3, gt=0)
+    osrm_url: str = ""
+    osrm_timeout_seconds: float = Field(default=10, gt=0)
+    osrm_metadata_path: str = ""
     company_latitude: float | None = Field(default=None, ge=-90, le=90, allow_inf_nan=False)
     company_longitude: float | None = Field(default=None, ge=-180, le=180, allow_inf_nan=False)
     cors_origins: list[str] = ["http://localhost:3000"]
