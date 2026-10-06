@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import shutil
 import subprocess
 import urllib.request
 from pathlib import Path
@@ -11,6 +12,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--url", default="https://download.bbbike.org/osm/bbbike/Saigon/Saigon.osm.pbf")
 parser.add_argument("--directory", default="artifacts/osrm")
 parser.add_argument("--image", default="ghcr.io/project-osrm/osrm-backend:v6.0.0")
+parser.add_argument("--pbf", help="Use a versioned real OSM PBF instead of downloading")
+parser.add_argument("--sha256", help="Required checksum when supplying --pbf")
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 directory = (root / args.directory).resolve()
@@ -24,6 +27,18 @@ if previous and previous["source_url"] != args.url:
     raise ValueError(
         "Different source URL: choose a separate --directory; existing graph preserved"
     )
+if args.pbf:
+    supplied = (root / args.pbf).resolve()
+    if not supplied.is_relative_to(root) or not args.sha256:
+        raise ValueError("Versioned PBF must be inside workspace with an explicit SHA256")
+    supplied_digest = hashlib.sha256(supplied.read_bytes()).hexdigest()
+    if supplied_digest != args.sha256:
+        raise ValueError("Versioned OSM PBF checksum mismatch")
+    if not pbf.exists() or hashlib.sha256(pbf.read_bytes()).hexdigest() != supplied_digest:
+        temporary = directory / "download.part"
+        shutil.copyfile(supplied, temporary)
+        temporary.replace(pbf)
+    print("Using checksum-verified real OSM PBF", supplied.name, flush=True)
 if not pbf.exists():
     temporary = directory / "download.part"
     with urllib.request.urlopen(args.url, timeout=60) as source, temporary.open("wb") as target:

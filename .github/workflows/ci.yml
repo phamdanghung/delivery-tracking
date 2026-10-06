@@ -63,7 +63,7 @@ jobs:
       - run: uv run --frozen mypy app
       - name: Prepare and start real self-hosted OSRM
         run: |
-          uv run --project . --frozen ../../scripts/prepare_osrm.py
+          uv run --project . --frozen ../../scripts/prepare_osrm.py --pbf infra/osrm/fixtures/Saigon.osm.pbf --sha256 305729efc04180b6a151ba3d61f6bb5c91b05ed044eed734b30f3625f806119b
           docker run -d --name m3-osrm -p 127.0.0.1:5000:5000 -v "$GITHUB_WORKSPACE/artifacts/osrm:/data:ro" ghcr.io/project-osrm/osrm-backend:v6.0.0 osrm-routed --algorithm mld /data/map.osrm
           uv run --project . --frozen ../../scripts/verify_osrm.py
       - run: uv run --frozen alembic upgrade head

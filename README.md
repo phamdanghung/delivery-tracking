@@ -110,4 +110,6 @@ Driver chỉ thấy chuyến đã duyệt của mình và chỉ đề xuất l�
 
 ENV `OSRM_URL`, `OSRM_METADATA_PATH`, `FIXED_TIME_TOLERANCE_SECONDS=900`, `DEFAULT_SERVICE_SECONDS=600`, `ROUTE_SOLVER_SECONDS=3`, `OSRM_TIMEOUT_SECONDS=10`. Metadata path tương đối được tính từ repo root; Compose dùng URL internal và mount read-only. Provider chỉ kết nối địa chỉ local/private, không proxy/redirect và không fallback. `scripts/verify_osrm.py` xác minh table/route thật bằng tọa độ fixture public, độc lập với điểm công ty cấu hình.
 
+CI dùng extract đường thật có phiên bản tại `infra/osrm/fixtures/Saigon.osm.pbf`, kiểm SHA256 rồi tự dựng graph. Nguồn/ODbL ghi trong README cạnh file; tránh timeout nguồn tải công khai, không dùng mock. Có thể dùng cùng input local với `prepare_osrm.py --pbf infra/osrm/fixtures/Saigon.osm.pbf --sha256 305729efc04180b6a151ba3d61f6bb5c91b05ed044eed734b30f3625f806119b`.
+
 OR-Tools giữ thứ tự tối ưu số điểm vi phạm → km → thời gian. Ngân sách solver cấu hình được; nếu hết thời gian trước khi chứng minh tối ưu toàn cục, kết quả nêu cảnh báo và mục tiêu đã chứng minh. Hard time gate vẫn kiểm tra trước duyệt. CI có OSRM/PostGIS/Traccar thật, giữ `npm ci` audit và các runtime-surface gates. M3 không mở M4; accepted risk M2 không tự áp dụng M3.
