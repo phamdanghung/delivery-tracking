@@ -303,6 +303,27 @@ Theo dõi:
 - Phạm vi: điều phối phải điều chỉnh dữ liệu rồi tối ưu lại; M3 không cho manual override hard time violation. Duyệt tuyến theo WEB-07/DEC-025 chỉ khi kết quả còn hợp lệ và không vi phạm.
 - Ghi chú: quá tải vẫn chỉ WARNING, không chặn duyệt theo DEC-013. Không sửa DEC cũ.
 
+### DEC-033 — Accepted Risk cho M3
+- Ngày chốt: 07/10/2026.
+- Milestone liên quan: M3.
+- Quyết định: chủ dự án phê duyệt CHẤP NHẬN TẠM THỜI rủi ro của `braces GHSA-vfj7-8cjw-p6xm` và `node-forge GHSA-86w9-cpqp-85rv` cho M3 development/local/CI; M3 **PASS WITH ACCEPTED RISK**.
+- Phạm vi: chỉ M3 và môi trường development/local/CI hiện tại.
+- Không áp dụng cho: production hoặc milestone khác. Không xem advisory là đã vá, không miễn trừ các kiểm soát bảo mật khác.
+- Ghi chú: quyết định mới riêng cho M3; giữ nguyên DEC-023/024/029 và toàn bộ lịch sử. Không tự merge PR #2 hoặc chuyển M4.
+
+Điều kiện bắt buộc:
+- chỉ dùng repo/config/cert đáng tin cậy;
+- Metro/Compose chỉ expose trong phạm vi cần thiết/loopback;
+- không dùng `npm audit fix --force`;
+- không downgrade Expo/React Native chỉ để audit về 0;
+- không suppress hoặc ẩn advisory;
+- tiếp tục giữ npm audit và runtime-surface gates trong CI/report.
+
+Theo dõi:
+- Review muộn nhất **02/11/2026** hoặc trước production, tùy mốc nào đến trước.
+- Nếu upstream có bản vá sớm hơn: ưu tiên nâng cấp và chạy lại đầy đủ npm ci, build, Android/iOS export, test, Docker/stack/health và CI remote.
+- Nếu advisory đi vào runtime attack surface thực tế ở milestone sau: dừng phần liên quan và đánh giá lại; không tự suy rộng quyết định này.
+
 ## 14. Milestone boundaries
 
 ### M0

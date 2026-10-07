@@ -1,6 +1,6 @@
 # M3 FINAL
 
-Ngày: 06/10/2026. Branch `codex/m3-route-optimization`, base M2 merge `206214f06120c5bcf797356a16edf30aceb21594`. Source `0da996e1d4ef41f1a2161318fde2d2d80b49e69d`. **Kiểm tra kỹ thuật/CI PASS; M3 FAIL chỉ còn quyết định security riêng.**
+Ngày kiểm tra: 06/10/2026; cập nhật quyết định: 07/10/2026. Branch `codex/m3-route-optimization`, base M2 merge `206214f06120c5bcf797356a16edf30aceb21594`. Source `0da996e1d4ef41f1a2161318fde2d2d80b49e69d`. **M3 PASS WITH ACCEPTED RISK theo DEC-033; kiểm tra kỹ thuật/CI PASS.**
 
 ## 1. Phần đã triển khai
 
@@ -46,9 +46,11 @@ Source `0da996e1d4ef41f1a2161318fde2d2d80b49e69d`, [run 37462411127](https://git
 
 Frontend: clean npm ci 765 packages, audit **19 high** hiển thị; lint/typecheck, shared **7 PASS**, web build/**19** traces sạch, Android/iOS export và **578/580** sources sạch. Backend: uv frozen/lint/format/mypy, graph OSRM dựng thật từ PBF đã kiểm checksum và table/route PASS, PostGIS/Traccar thật, **74 PASS** (21.11s), migration downgrade/upgrade, **18 integration PASS** (17.22s). Không dùng local tests thay bằng chứng remote. Commit báo cáo sau source không thay ứng dụng/lock/migration/CI đã xác minh; không tự chạy lại checks chỉ vì tài liệu đổi.
 
+CI source M3 đã được xác nhận vẫn PASS. Commit tài liệu `f6507914bd01791f3a4434190ac0d6b0ebcc921a`, [run 37462918774](https://github.com/phamdanghung/delivery-tracking/actions/runs/37462918774), cũng **completed/success**, cả frontend/backend PASS trên cùng source. Các artifact log/metadata hiện lưu run này. Cập nhật DEC-033 và kết luận chỉ đổi tài liệu, không đổi code/dependency/migration/CI; bằng chứng kỹ thuật vẫn áp dụng theo CODEX_TOKEN_RULES mục 15.
+
 Draft [PR #2](https://github.com/phamdanghung/delivery-tracking/pull/2), base `codex/m0-foundation`. Chưa merge; không tự chuyển M4.
 
-## 5. Security và quyết định còn cần chủ dự án
+## 5. Security và quyết định chấp nhận rủi ro có điều kiện
 
 Audit M3: **19 high, 0 critical**, hai advisory gốc **braces GHSA-vfj7-8cjw-p6xm** và **node-forge GHSA-86w9-cpqp-85rv**, chưa vá. `m3-npm-audit.json` giữ toàn bộ findings; `m3-dependency-security.json` phân loại và liệt kê 20 paths braces, 2 node-forge, 10 uuid. Không đổi npm dependency hoặc che/ignore findings.
 
@@ -56,10 +58,12 @@ Audit M3: **19 high, 0 critical**, hai advisory gốc **braces GHSA-vfj7-8cjw-p6
 
 Findings lan truyền qua Expo/RN; hai package gốc đi qua Metro/glob/build tooling và Expo certificate tooling. Expo/RN là dependency runtime trực tiếp nhưng điều đó không chứng minh braces/node-forge được bundle vào runtime. Web traces và Android/iOS source maps hiện không có hai package; rủi ro thực tế vẫn tồn tại với repo/config/cert không tin cậy trong dev/build/CI. Không coi audit đã sạch hay production đã an toàn.
 
-DEC-023/024/029 không áp dụng M3. **Chưa có phê duyệt accepted risk M3**. Nếu chấp nhận tạm thời, cần DEC mới riêng cho M3 development/local/CI, không production, giữ repo/config/cert tin cậy, Metro/Compose loopback, audit/runtime gates; không force-fix/downgrade/suppress. Review muộn nhất **02/11/2026** hoặc trước production, mốc sớm hơn; ưu tiên patch khi upstream có và chạy lại xác minh đầy đủ; dừng/đánh giá lại nếu đi vào runtime attack surface.
+**DEC-033, ngày 07/10/2026:** chủ dự án phê duyệt chấp nhận tạm thời cả hai advisory riêng cho **M3 development/local/CI hiện tại**, không production hoặc milestone khác. Giữ nguyên DEC-023/024/029. Không xem advisory là đã vá hoặc bỏ qua kiểm soát bảo mật khác.
+
+Giữ repo/config/cert đáng tin cậy; Metro/Compose chỉ expose trong phạm vi cần thiết/loopback; không `npm audit fix --force`, không downgrade Expo/React Native chỉ để audit về 0, không suppress/ẩn advisory; tiếp tục npm audit và runtime-surface gates trong CI/report. Review muộn nhất **02/11/2026** hoặc trước production, mốc sớm hơn. Nếu upstream có bản vá sớm hơn, ưu tiên nâng cấp và chạy lại đầy đủ npm ci, build, Android/iOS export, test, Docker/stack/health và CI remote. Nếu advisory đi vào runtime attack surface thực tế ở milestone sau, dừng phần liên quan và đánh giá lại ngay.
 
 ## 6. Điểm chưa xác minh và kết luận
 
-Chưa có accepted risk M3. Production, APK/IPA/GPS vật lý, vùng đường ngoài extract Saigon và milestones sau ngoài phạm vi M3; không được suy từ các fixture local/CI. Database QA riêng đã được hủy bằng harness sau kiểm tra; database vận hành không được reset/downgrade.
+Hai advisory chưa được vá, được chấp nhận tạm thời đúng phạm vi DEC-033. Production, APK/IPA/GPS vật lý, vùng đường ngoài extract Saigon và milestones sau ngoài phạm vi M3; không được suy từ các fixture local/CI. Database QA riêng đã được hủy bằng harness sau kiểm tra; database vận hành không được reset/downgrade.
 
-**M3: FAIL/chưa đủ điều kiện đóng**, chỉ còn hai advisory chưa có bản vá và chưa được chủ dự án phê duyệt riêng cho M3. Source/test/migration/build/export/Docker/health/CI đã PASS. Không merge PR, không chuyển M4.
+**M3: PASS WITH ACCEPTED RISK theo DEC-033, đủ điều kiện đóng trong phạm vi M3 development/local/CI.** Source/test/migration/build/export/Docker/health/CI đã PASS; hai advisory còn mở được chủ dự án chấp nhận tạm thời có điều kiện. Không merge PR #2 khi chưa có chỉ thị, không chuyển M4.
