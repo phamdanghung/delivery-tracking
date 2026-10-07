@@ -17,7 +17,7 @@ export default function StopDetail() {
   const arrival = [...detail.events].reverse().find((x) => x.to_status === "ARRIVED");
   const submit = async (kind: "STATUS" | "CORRECT_ARRIVED" | "PROPOSE_RESCHEDULE", data: unknown) => {
     if (saving) return; setSaving(true); setError("");
-    try { await state.enqueue({ kind, resource_id: id, data }); setError("Đã lưu trên máy — chờ đồng bộ"); }
+    try { await state.enqueue({ kind, resource_id: id, data }); setError("Đã lưu thao tác trên máy"); }
     catch (x) { setError(x instanceof Error ? x.message : "Không lưu được thao tác; vui lòng thử lại"); }
     finally { setSaving(false); }
   };

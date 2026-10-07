@@ -8,7 +8,7 @@ import { projected } from "./projection";
 
 export { projected } from "./projection";
 
-export const statusLabel: Record<string, string> = { ASSIGNED: "Đã phân", EN_ROUTE: "Đang đi giao", ARRIVED: "Đã đến", DELIVERING: "Đang bàn giao", DELIVERED: "Giao thành công", FAILED: "Giao không thành công", CANCELLED: "Đã hủy", PLANNED: "Đã duyệt", ACTIVE: "Đang chạy", COMPLETED: "Hoàn tất", RESCHEDULED: "Hẹn giao lại" };
+export const statusLabel: Record<string, string> = { CREATED: "Mới tạo", ASSIGNED: "Đã phân", EN_ROUTE: "Đang đi giao", ARRIVED: "Đã đến", DELIVERING: "Đang bàn giao", DELIVERED: "Giao thành công", FAILED: "Giao không thành công", CANCELLED: "Đã hủy", PLANNED: "Đã lên kế hoạch", ACTIVE: "Đang chạy", COMPLETED: "Hoàn tất", RESCHEDULED: "Hẹn giao lại" };
 export const time = (value: string | null) => value ? new Date(value).toLocaleString("vi-VN", { timeZone: "Asia/Bangkok" }) : "Chưa có";
 export function commitment(d: Delivery) {
   return d.commitment_type === "FIXED_TIME" ? `Hẹn ${time(d.appointment_at)}` : d.commitment_type === "TIME_WINDOW" ? `${time(d.window_start)} – ${time(d.window_end)}` : `Trước ${time(d.deadline_at)}`;
@@ -72,7 +72,7 @@ export function Today() {
       const age = gps?.gps_at ? (now - new Date(gps.gps_at).getTime()) / 1000 : Infinity;
       const freshness = !gps || age < 0 || age > 120 ? "LOST" : age > 30 && gps.freshness === "NORMAL" ? "STALE" : gps.freshness;
       const leg = d && cache.route_stops?.[d.id];
-      return <Card key={trip.id}><Text style={styles.cardTitle}>{trip.plate_no} — {statusLabel[trip.status]}</Text>
+      return <Card key={trip.id}><Text style={styles.cardTitle}>{trip.plate_no} — {trip.status === "PLANNED" ? "Đã duyệt" : statusLabel[trip.status]}</Text>
         <Text style={styles.body}>{trip.stops.filter((x) => ["DELIVERED", "FAILED", "CANCELLED"].includes(cache.deliveries[x.delivery_id]?.delivery.status) || ["DELIVERED", "FAILED", "CANCELLED"].includes(x.status)).length}/{trip.stops.length} điểm hoàn tất</Text>
         <Text style={styles.body}>{!state.online ? "GPS: vị trí cuối ghi nhận" : freshness === "NORMAL" ? "GPS bình thường" : freshness === "STALE" ? "GPS cập nhật chậm" : "GPS mất tín hiệu"} · {time(gps?.gps_at ?? null)}</Text>
         {trip.status === "PLANNED" && <Button title="Bắt đầu chuyến" disabled={saving} onPress={() => { setSaving(true); void state.enqueue({ kind: "START_TRIP", resource_id: trip.id }).catch((x: Error) => setActionError(x.message)).finally(() => setSaving(false)); }}/>} 
