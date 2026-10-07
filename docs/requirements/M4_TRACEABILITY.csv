@@ -1,0 +1,6 @@
+reference,implementation,evidence
+ROUT-03;DRV-01/02/03,apps/driver-mobile/src/app;app/driver.py,M4 browser QA;test_contract.py
+DEC-014/015/020;AT-06,offline/outbox.ts;0005_m4_driver_actions.py,tests/outbox.test.mjs;test_m4_api.py::test_durable_replay_concurrent_start_order_and_scope
+ROUT-04;AT-05,app/geofence.py;app/gps.py,test_m4_api.py::test_real_postgis_geofence_hysteresis_and_offline_correction_replay
+DEC-034,arrival-correction;stop_geofence_state,PostGIS 50m/70m hysteresis;correction replay/audit
+DEC-011/028,PROPOSE_RESCHEDULE;baseline StatusCommand,baseline M2 regression;POD gate unchanged

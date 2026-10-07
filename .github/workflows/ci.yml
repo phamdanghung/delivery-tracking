@@ -1,4 +1,4 @@
-name: M3 route optimization
+name: M4 driver offline geofence
 on: [push, pull_request]
 jobs:
   frontend:

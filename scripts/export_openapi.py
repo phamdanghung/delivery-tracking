@@ -8,8 +8,8 @@ root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(root / "apps/api"))
 from app.main import app  # noqa: E402
 
-destination = root / "openapi/m3.openapi.json"
+destination = root / "openapi/m4.openapi.json"
 destination.write_text(
     json.dumps(app.openapi(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
 )
-print("Updated versioned M3 contract:", destination.name)
+print("Updated versioned M4 contract:", destination.name)

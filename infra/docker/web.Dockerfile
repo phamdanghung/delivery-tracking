@@ -5,6 +5,7 @@ COPY package.json package-lock.json ./
 COPY apps/admin-web/package.json apps/admin-web/package.json
 COPY apps/driver-mobile/package.json apps/driver-mobile/package.json
 COPY packages/shared/package.json packages/shared/package.json
+COPY scripts/patch_query_string_interop.cjs scripts/patch_query_string_interop.cjs
 RUN npm install --global npm@12.2.0 && npm ci
 COPY apps/admin-web apps/admin-web
 COPY packages/shared packages/shared

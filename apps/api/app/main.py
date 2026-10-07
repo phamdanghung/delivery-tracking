@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app import auth, deliveries, fleet, gps, routes
+from app import auth, deliveries, driver, fleet, geofence, gps, routes
 from app.config import get_settings
 from app.health import readiness
 
@@ -83,12 +83,14 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
 
 
 settings = get_settings()
-app = FastAPI(title="Fleet Delivery API — M3", version="1.3.0", lifespan=lifespan)
+app = FastAPI(title="Fleet Delivery API — M4", version="1.4.0", lifespan=lifespan)
 app.include_router(auth.router)
 app.include_router(fleet.router)
 app.include_router(gps.router)
 app.include_router(deliveries.router)
 app.include_router(routes.router)
+app.include_router(driver.router)
+app.include_router(geofence.router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,

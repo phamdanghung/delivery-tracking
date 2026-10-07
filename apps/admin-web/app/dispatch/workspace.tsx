@@ -608,6 +608,17 @@ export default function DispatchWorkspace({
                   }
                 />
                 {detail.delivery.status === "ARRIVED" && (
+                  <ActionForm
+                    title="Sửa Đã đến nhận sai → Đang đi giao (ghi nhật ký)"
+                    busy={busy}
+                    reasonRequired
+                    onSubmit={(reason) => mutate(`deliveries/${entityId}/arrival-correction`, {
+                      arrival_event_id: [...detail.events].reverse().find((e) => e.to_status === "ARRIVED")?.id,
+                      reason,
+                    })}
+                  />
+                )}
+                {detail.delivery.status === "ARRIVED" && (
                   <button
                     disabled={busy}
                     onClick={() =>

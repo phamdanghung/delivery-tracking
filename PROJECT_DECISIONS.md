@@ -324,6 +324,14 @@ Theo dõi:
 - Nếu upstream có bản vá sớm hơn: ưu tiên nâng cấp và chạy lại đầy đủ npm ci, build, Android/iOS export, test, Docker/stack/health và CI remote.
 - Nếu advisory đi vào runtime attack surface thực tế ở milestone sau: dừng phần liên quan và đánh giá lại; không tự suy rộng quyết định này.
 
+### DEC-034 — Sửa ARRIVED và geofence re-arm M4
+- Ngày chốt: 07/10/2026.
+- Milestone liên quan: M4.
+- Quyết định: bổ sung DEC-004, chỉ cho sửa ARRIVED → EN_ROUTE; trip vẫn ACTIVE; bắt buộc lý do và audit actor/time/old_state/new_state/reason. Không thêm transition ngược khác.
+- Phạm vi: sau manual correction, khóa auto-ARRIVED cho stop đó; GPS vẫn ở trong 50m không được đánh dấu lại. Ngưỡng vào ≤50m; chỉ re-arm khi GPS hợp lệ xác nhận xe đã ra ngoài >70m, sau đó lần vào ≤50m tiếp theo mới được auto-ARRIVED.
+- Không áp dụng cho: re-arm bằng timeout đơn thuần hoặc transition ngược khác.
+- Ghi chú: phải idempotent, không duplicate ARRIVED event; offline sync giữ thứ tự event và không làm auto-ARRIVED lặp sau reconnect. Giữ nguyên DEC-004 và các DEC cũ.
+
 ## 14. Milestone boundaries
 
 ### M0
