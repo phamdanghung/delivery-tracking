@@ -580,7 +580,7 @@ def start_trip(trip_id: UUID, user: User, request: Request, db: Db) -> TripOut:
     db.execute(text("SELECT pg_advisory_xact_lock(73210402)"))
     before = trip_detail(db, trip_id, user)
     if before.status != "PLANNED":
-        raise HTTPException(409, "Chỉ bắt đầu chuyến đã duyệt; M2 chưa duyệt/xuất chuyến nháp")
+        raise HTTPException(409, "Chỉ bắt đầu chuyến đã duyệt sau tối ưu tuyến")
     rows = [delivery(db, UUID(str(x["delivery_id"])), user) for x in before.stops]
     if not rows or any(x.status != "ASSIGNED" for x in rows):
         raise HTTPException(409, "Các đơn phải đã được phân sau duyệt")
