@@ -1,57 +1,46 @@
 # M4 FINAL
 
-Ngày chốt bằng chứng: **08/10/2026**. Branch `codex/m4-driver-offline-geofence`, base M3 merge `8d95b1c7c08df79f24335526c9e2763a02309e29`; source kiểm tra `97e9d449101fff7cc6968d310a2ebe2f5a65ff57`. [Draft PR #3](https://github.com/phamdanghung/delivery-tracking/pull/3), chưa merge.
+Ngày cập nhật: **08/10/2026**. Source `9c107f1a3659dd8a2b278db11c0a3c1d48dbbf70`, branch `codex/m4-driver-offline-geofence`, base M3 merge `8d95b1c7c08df79f24335526c9e2763a02309e29`. [Draft PR #3](https://github.com/phamdanghung/delivery-tracking/pull/3), chưa merge. Không chuyển M5.
 
 ## 1. Phần đã triển khai
 
-- Driver App: chuyến/stop của chính tài xế, cam kết/ETA/lộ trình, timeline, gọi/mở chỉ đường bằng tọa độ; trạng thái cache/offline/queue/sync/lỗi rõ ràng. Áp dụng M4_SCOPE và M4_TRACEABILITY.
-- SQLite cache/outbox theo owner; SecureStore token trên native. Persist trước khi báo lưu; FIFO, single-flight, retry cùng payload/id, phục hồi sau restart, sync reconnect/foreground. Cache kết quả ACK trước khi đánh dấu SYNCED; action đã SYNCED không đảo trạng thái mới từ server. Web preview dùng localStorage cho cache/queue, token chỉ trong bộ nhớ.
-- Receipt transaction theo actor/client_action_id giữ lâu hơn 24 giờ; replay trả kết quả cũ, không tạo event/audit trùng. Cùng id khác payload bị từ chối; RBAC/state machine/POD gate vẫn kiểm tại server.
-- Geofence từ GPS Traccar hợp lệ/fresh, khoảng cách PostGIS thật, stop kế tiếp của chuyến ACTIVE; không thay bằng GPS điện thoại. DEC-034 bổ sung mới, giữ DEC-004: sửa ARRIVED → EN_ROUTE có lý do/audit, trip ACTIVE; khóa tự ARRIVED tới GPS mới >70m, lần vào ≤50m tiếp theo mới ARRIVED. Không timeout hoặc transition ngược khác.
-- Không triển khai camera/upload POD M5, Customer Tracking M6 hoặc chi phí M7. Chưa có POD hợp lệ vẫn không cho DELIVERED.
+- Driver App: chuyến/stop của chính tài xế, route/cam kết/ETA/timeline, gọi và chỉ đường bằng tọa độ; SQLite cache/outbox theo owner, SecureStore native, web preview cache/queue localStorage và token trong bộ nhớ. Persist trước khi báo lưu, sync reconnect/foreground, cache ACK trước SYNCED; receipt theo actor/client_action_id giữ nguyên kết quả replay và audit.
+- DEC-034: geofence server dùng GPS Traccar hợp lệ/fresh và PostGIS thật; sửa ARRIVED → EN_ROUTE có lý do/audit, trip ACTIVE, khóa auto-ARRIVED đến GPS mới >70m rồi lần vào ≤50m. Không timeout hoặc transition ngược khác.
+- **DEC-036**: 409 → CONFLICT, giữ payload/id; chỉ chặn chuỗi phụ thuộc cùng entity, entity khác tiếp tục. Server cấp review token từ dữ liệu mới và kiểm lại trước quyết định bỏ; quyết định có lý do được persist/retry idempotently sau restart/lost response. Giữ DISCARDED và audit actor/time/action/conflict/reason. Tài xế chọn rõ command cũ cần liên kết, tạo command mới từ trạng thái hiện tại với ID mới; không tự replay payload cũ hoặc tự gắn mọi hành động tương lai thành replacement.
+- Không thay state machine/RBAC/POD gate M1–M3, không thêm camera/POD upload, Customer Tracking hoặc chi phí M5–M7. Snapshot contract cũ giữ nguyên.
 
 ## 2. File/migration/API chính
 
-- Backend `apps/api/app/driver.py`, `geofence.py`, tích hợp `gps.py`/`main.py`; migration **0005_m4_driver_actions**, bảng receipt và trạng thái geofence. OpenAPI additive `openapi/m4.openapi.json`; snapshots M1/M2/M3 giữ nguyên và được compatibility test.
-- API `/api/v1/driver/today`, `/api/v1/driver/actions`, `/api/v1/deliveries/{id}/arrival-correction`; Web BFF/detail thêm correction theo quyền hiện có.
-- Mobile `src/app`, `src/driver`, `src/offline`, tests; Expo Router theo AGENTS.md. Expo SDK **57.0.27**, React Native **0.86.3**, React **19.2.3**; không đổi major stack.
-- `package.json`/lock, CI, Web Dockerfile: npm **12.2.0**, upstream decoder **0.5.0** cùng import shim fail-closed `scripts/patch_query_string_interop.cjs`; xcode→uuid **11.1.1** giữ nguyên. Không sửa thuật toán package, không force audit fix/suppress/downgrade.
+- `apps/api/app/driver.py`, `geofence.py`, `gps.py`, `main.py`; migration **0005_m4_driver_actions** và **0006_m4_conflict_resolution**. Receipt, geofence state và conflict resolution/audit được lưu trên database thật.
+- API M4 `/api/v1/driver/today`, `/driver/actions`, `/driver/conflicts/review`, `/driver/conflicts/resolve`, `/deliveries/{id}/arrival-correction`; contract additive `openapi/m4.openapi.json`.
+- Mobile `src/app`, `src/driver`, `src/offline` và tests; Web correction tại delivery detail; `PROJECT_DECISIONS.md`, `M4_SCOPE.md`, `M4_TRACEABILITY.md`, README và CI audit gate.
+- Expo **57.0.27**, React Native **0.86.3**, React **19.2.3** giữ nguyên. Decoder upstream **0.5.0** với shim CJS fail-closed; xcode → uuid **11.1.1**. Revision conflict không thêm dependency.
 
 ## 3. Test/build/Docker/CI và bằng chứng
 
-| Kiểm tra | Kết quả / bằng chứng |
+| Kiểm tra | Kết quả |
 |---|---|
-| Backend/database local | **77 PASS**, không skip; PostGIS/OSRM/Traccar thật; `artifacts/m4-full-database.log` |
-| Migration | Dev và container head **0005**; isolated upgrade/downgrade/upgrade thật, integration rerun **20 PASS**. Không downgrade database nghiệp vụ; `m4-migration-head.txt`, `m4-migration-container.txt` |
-| M4 integration | Concurrent replay, RBAC/stable rejection, audit, GPS stale/invalid/duplicate, 50m/70m hysteresis, offline correction/stale arrival ID; `m4-focused-final.log` |
-| Contract/lint/typecheck | Contract **4 PASS**, Ruff/format/mypy và frontend lint/typecheck PASS; core OR-Tools 9 test giữ nguyên |
-| Frontend tests | Shared **7 PASS**, mobile **5 PASS**, gồm SQLite thật/restart/FIFO/concurrency/projection và decoder security regression |
-| npm ci/compatibility | Clean npm 12.2.0 ci PASS; Expo install --check tương thích; `m4-npm-ci-final.log`, `m4-expo-compatibility.log` |
-| Web build/runtime | PASS, **19** traces, không tham chiếu các package advisory; `m4-web-runtime-surface.json` |
-| Android/iOS export/runtime | PASS, **1284/1150** sources, không chứa code advisory; `m4-mobile-runtime-surface.json`. Export không phải APK/IPA |
-| Browser QA | PASS trên API/PostGIS/OSRM thật trong database QA riêng: route 375px không tràn; dừng API → correction offline → reconnect sync; 60m khóa, 71m re-arm, 49m ARRIVED mới; driver/dispatcher audit, reload không replay ARRIVED. `m4-ui-checks.json` và screenshots `m4-ui-*.png`; đã dọn đúng database QA |
-| Docker/stack/health | Engine **29.7.2**, image cuối build/start **PASS**; api/admin-web/postgres/redis/minio/traccar/osrm **healthy**, minio-init exit **0**. API live/ready và Web 200, DB/Redis/storage/Traccar ready; MinIO versioning + signed read/write PASS, anonymous read 403; OSRM matrix/geometry **85 points PASS**. `m4-docker-final-resume.log`, `m4-containers.json`, `m4-stack-health.json`, `m4-osrm-health.json` |
-| CI remote | Source **97e9d44**, [run 37697731979](https://github.com/phamdanghung/delivery-tracking/actions/runs/37697731979) **completed/success**: frontend và backend PASS; backend **77 PASS**, migration round-trip + **20 PASS** integration. Đã đọc log thực `m4-ci-frontend.log`, `m4-ci-backend.log`, metadata `m4-ci-status.json` |
-
-Audit vẫn hiển thị **21 high**, 0 moderate/critical, lan truyền từ hai advisory braces/node-forge; `m4-npm-audit.json`, `m4-dependency-security.json` và tree. Decoder [GHSA-vcc3-ghjq-m6fr](https://github.com/advisories/GHSA-vcc3-ghjq-m6fr) đã nâng upstream 0.5.0 và có regression/exports PASS. Hai advisory còn lại chưa có bản vá theo đối chiếu upstream ngày 07/10/2026: [braces](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm), [node-forge](https://github.com/advisories/GHSA-86w9-cpqp-85rv).
-
-Docker Desktop bị lỗi socket runtime cũ khi khởi động lại; đã giữ lại thư mục runtime cũ, tạo socket runtime mới và khôi phục engine. Không reset/xóa volumes hoặc dữ liệu. Build bị gián đoạn được tiếp tục bằng cache; health lấy sau khi Compose xác nhận healthy, không tính lần gọi sớm trong startup là PASS.
-
-Đường dependency tiêu biểu: eslint-config-next → plugin → fast-glob → micromatch → braces; Expo → CLI → code-signing-certificates/node-forge; Expo → config-plugins → xcode → uuid 11.1.1. Đây là đường tooling liên quan advisory; không suy diễn rằng toàn bộ Expo/React Native là tooling. Runtime gates kiểm code đóng gói thực tế, không chỉ nhãn devDependencies. Giữ repo/config/cert đáng tin cậy, loopback/ports cần thiết, audit và runtime gates trong CI. DEC-033 chỉ áp dụng M3; chưa có chấp thuận M4. Mốc theo dõi đang có: muộn nhất **02/11/2026** hoặc trước production.
+| Backend/database | **79 PASS**, không skip; PostGIS/OSRM/Traccar thật; `artifacts/m4-conflict-full-database.log` |
+| Migration | Database kiểm tra head **0006**; isolated upgrade/downgrade/upgrade thật và integration rerun **22 PASS**; không downgrade database nghiệp vụ |
+| Conflict integration | Cùng/khác entity, review stale, payload nguyên bản, RBAC, discard/replacement/replay/concurrent resolution và exact audit PASS |
+| Frontend | Shared **7 PASS**, mobile **8 PASS**, SQLite thật: restart/offline/reconnect/lost response, dependent queue, independent sync, không duplicate và explicit replacement; lint/typecheck PASS |
+| Browser QA | API/PostGIS/OSRM thật trên database QA riêng: offline hai action cùng stop và một action stop khác; stop độc lập ACK khi stop đầu 409; review/discard từng command; GPS 71m/49m re-arm; command mới liên kết rõ command cũ. Database xác nhận 2 conflict, 2 discard audit, 1 replacement, mỗi stop 1 DELIVERING, không FAILED giả. `m4-conflict-ui-proof.json`, screenshots `m4-ui-conflict-*.png`; database QA đã dọn đúng phạm vi |
+| npm ci / audit / web / Android-iOS | Clean npm 12.2.0 ci PASS; audit đầy đủ 21 high từ hai advisory được DEC-035 chấp nhận, gate PASS. Web build PASS, 19 traces; Android/iOS export PASS, 1284/1150 sources. Runtime gates không phát hiện package advisory trong các bundle; export không phải APK/IPA |
+| CI remote | [Run 37767991879](https://github.com/phamdanghung/delivery-tracking/actions/runs/37767991879), source `9c107f1`: **completed/success cả frontend/backend**. Đã đọc log thực `m4-ci-frontend.log`, `m4-ci-backend.log`, metadata `m4-ci-status.json`; backend 79 + 22 PASS, shared 7/mobile 8 PASS |
+| Docker/stack/health | Engine **29.7.2**, full build/start **PASS** trên project riêng `fleet-m4-verification`; api/admin-web/postgres/redis/minio/traccar/osrm **healthy**, minio-init exit **0**. Container head **0006**; API live/ready, Web/Traccar 200, DB/Redis/storage ready; MinIO versioning và signed read/write PASS, anonymous read 403; OSRM matrix/geometry 85 points PASS. `m4-conflict-stack-build.log`, `m4-conflict-containers.json`, `m4-conflict-migration-container.txt`, `m4-conflict-stack-health.json`, `m4-conflict-osrm-health.json`. Không coi kết quả project riêng là khôi phục dữ liệu project chuẩn |
 
 ## 4. Điểm chưa xác minh
 
-- Chưa chạy trên thiết bị Android/iOS vật lý, APK/IPA, airplane mode hoặc SQLite/SecureStore native trên thiết bị. Node SQLite thật, browser outage và native export không thay thế nghiệm thu thiết bị.
-- Chưa chạy xe/GPS thực ngoài đường; AT-05 dùng vị trí giả lập qua luồng GPS server và PostGIS thật. Chưa mở ứng dụng gọi điện/chỉ đường trên thiết bị.
-- Không xác minh production hoặc các chức năng M5 trở đi; không dùng kết quả M4 để phê duyệt production.
+- Docker Desktop sau khởi động nhận datastore trống, không nhận các image/volume development cũ. Không có lệnh reset/prune/xóa volume; giữ các thư mục runtime đã đổi tên. Chưa chứng minh khôi phục dữ liệu cũ. Project chuẩn có volume mới trống nhưng **chưa khởi tạo database**; chờ chủ dự án quyết định phục hồi dữ liệu cũ hay cho phép database development mới. Stack kiểm tra dùng project/volumes riêng.
+- Chưa nghiệm thu thiết bị Android/iOS vật lý, APK/IPA, airplane mode hoặc SQLite/SecureStore trên thiết bị; export/Node SQLite/browser outage không thay nghiệm thu thiết bị. Chưa thử GPS xe ngoài đường hoặc ứng dụng gọi/chỉ đường trên thiết bị.
+- Không xác minh production/M5 trở đi.
 
-## 5. Quyết định cần chủ dự án
+## 5. Quyết định chủ dự án
 
-1. Có mở rộng chấp nhận tạm thời **braces GHSA-vfj7-8cjw-p6xm** và **node-forge GHSA-86w9-cpqp-85rv** sang M4 development/local/CI với các kiểm soát hiện có hay không. Không tự mở rộng DEC-033 và không coi advisory đã vá.
-2. Chốt xử lý offline **409** khi điều phối đã thay đổi/hủy dữ liệu: hiện giữ ERROR và FIFO, hiển thị lỗi/thử lại nguyên command, không tự bỏ action/đổi payload/id. Receipt từ chối ổn định có thể chặn queue; chưa triển khai thao tác giải quyết conflict khi chưa có quyết định. Đề xuất tài xế đọc dữ liệu mới và liên hệ điều phối; cần khóa cách giải quyết queue nếu muốn tiếp tục các action sau.
-
-Theo **CODEX_TOKEN_RULES.md §9**, “dừng đúng phần liên quan” khi thiếu nghiệp vụ/contract; phần xử lý conflict bổ sung dừng để chờ chốt. Các phần đã có quyết định và kiểm tra kỹ thuật được giữ nguyên.
+- **DEC-035** đã phê duyệt accepted risk M4: braces **GHSA-vfj7-8cjw-p6xm**, node-forge **GHSA-86w9-cpqp-85rv**, chỉ development/local/CI. Audit vẫn hiển thị **21 high** lan truyền từ hai root advisory; không coi đã vá, không suppress. Dùng repo/config/cert đáng tin cậy; Metro/Compose loopback/phạm vi cần thiết; không force fix/downgrade; giữ audit và runtime gates. Review muộn nhất **02/11/2026** hoặc trước production; upstream patch hoặc runtime exposure yêu cầu đánh giá lại ngay. Không sửa DEC-023/024/029/033.
+- **DEC-036** đã phê duyệt và triển khai quy tắc offline conflict. Hai quyết định nghiệp vụ/bảo mật không còn là blocker.
+- Còn chờ quyết định về dữ liệu development Docker cũ. Theo CODEX_TOKEN_RULES.md §9, dừng đúng phần có thể ảnh hưởng dữ liệu; không tự khởi tạo project chuẩn.
 
 ## 6. Kết luận
 
-**M4: FAIL — chưa đủ điều kiện đóng**, do accepted risk M4 và quy tắc giải quyết offline conflict chưa được chủ dự án chốt. Các kiểm tra kỹ thuật nêu trên **PASS**; các điểm chưa xác minh giữ rõ ở mục 4. Không tự kết luận PASS WITH CONDITIONS, không merge PR #3 và không chuyển M5.
+**M4: FAIL — chưa đủ điều kiện đóng**, chỉ còn blocker về dữ liệu development Docker cũ: cần chủ dự án chốt phục hồi dữ liệu cũ hoặc cho phép khởi tạo database development mới. Source, test/build/export/CI và full stack riêng đều PASS; accepted risk M4 đã được DEC-035 phê duyệt, conflict DEC-036 đã đạt. Sau khi giải quyết blocker dữ liệu và xác minh project chuẩn, có thể kết luận **PASS WITH ACCEPTED RISK**. Không merge PR #3, không chuyển M5.
