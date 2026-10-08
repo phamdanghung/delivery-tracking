@@ -5,6 +5,7 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, T
 import { designTokens as tokens } from "@fleet/shared";
 import { useDriver, type Delivery } from "./context";
 import { projected } from "./projection";
+import { finished, type PendingAction } from "../offline/outbox";
 
 export { projected } from "./projection";
 
@@ -15,15 +16,45 @@ export function commitment(d: Delivery) {
 }
 export function Page({ title, children }: { title: string; children: ReactNode }) {
   const state = useDriver();
-  const pending = state.queue.filter((x) => x.state !== "SYNCED");
+  const pending = state.queue.filter((x) => !finished(x));
   return <View style={styles.page}>
     <View style={styles.banner}><Text style={styles.body}>{!state.ready ? "Đang đọc dữ liệu đã lưu…" : !state.user ? "Chưa đăng nhập" : !state.online ? "Đang ngoại tuyến — thao tác sẽ được lưu trên máy" : state.busy ? pending.length ? `Đang đồng bộ ${pending.length} thao tác…` : "Đang cập nhật chuyến…" : pending.length ? `${pending.length} thao tác chưa đồng bộ` : state.error ? "Chưa xác minh đồng bộ" : "✓ Đã đồng bộ"}</Text></View>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text accessibilityRole="header" style={styles.title}>{title}</Text>
       {!!state.error && <Text accessibilityRole="alert" style={styles.error}>{state.error}</Text>}
+      {state.queue.filter((x) => x.state === "CONFLICT").map((item) => <ConflictCard key={item.command.client_action_id} item={item}/>)}
       {children}
     </ScrollView>
   </View>;
+}
+function ConflictCard({ item }: { item: PendingAction }) {
+  const state = useDriver();
+  const [reason, setReason] = useState(""); const [confirmed, setConfirmed] = useState(false);
+  const [saving, setSaving] = useState(false); const [error, setError] = useState("");
+  const action = item.command.action;
+  const labels = { START_TRIP: "Bắt đầu chuyến", STATUS: "Cập nhật trạng thái", PROPOSE_RESCHEDULE: "Đề xuất giao lại", CORRECT_ARRIVED: "Sửa Đã đến nhận sai" };
+  const data = action.data as { from_status?: string; to_status?: string; reason?: string } | undefined;
+  const known = state.cache?.deliveries[action.resource_id]?.delivery;
+  const trip = state.cache?.trips.find((x) => x.id === action.resource_id);
+  const detail = item.review?.state.delivery as Delivery | undefined;
+  const latest = detail?.status ?? item.review?.state.status;
+  async function perform(work: () => Promise<void>) { setSaving(true); setError(""); try { await work(); } catch (x) { setError(x instanceof Error ? x.message : "Chưa xử lý được conflict"); } finally { setSaving(false); } }
+  return <Card><Text accessibilityRole="alert" style={styles.error}>CẦN XỬ LÝ — Dữ liệu đã thay đổi</Text>
+    <Text style={styles.body}>{known ? `${known.code} · ${known.recipient_name}` : trip ? `Chuyến xe ${trip.plate_no}` : "Thao tác lưu trên máy không còn trong chuyến hiện tại"}</Text>
+    <Text style={styles.body}>Thao tác: {labels[action.kind]}{data?.to_status ? ` · ${statusLabel[data.from_status ?? ""] ?? data.from_status} → ${statusLabel[data.to_status] ?? data.to_status}` : ""}</Text>
+    {!!data?.reason && <Text style={styles.body}>Lý do cũ: {data.reason}</Text>}
+    <Text style={styles.body}>{item.error ?? item.review?.conflict}</Text>
+    <Text style={styles.body}>Thao tác cùng điểm giao tạm dừng. Các điểm khác vẫn đồng bộ. Xem dữ liệu mới trước khi quyết định bỏ.</Text>
+    <Button title="Xem dữ liệu mới từ máy chủ" disabled={!state.online || state.busy || saving || !!item.resolution} onPress={() => { setConfirmed(false); void perform(() => state.reviewConflict(item.command.client_action_id)); }}/>
+    {item.review && <><Text style={styles.body}>{detail?.code ? `${detail.code} · ` : ""}Trạng thái mới: {latest === "NO_LONGER_ASSIGNED" ? "Không còn được phân cho bạn" : !detail && latest === "PLANNED" ? "Đã duyệt" : statusLabel[String(latest)] ?? String(latest)}</Text>
+      {detail && <Text style={styles.body}>{commitment(detail)} · ETA {time(detail.eta_at)}</Text>}
+      <Button title={confirmed ? "✓ Đã xác nhận xem dữ liệu mới" : "Tôi đã xem dữ liệu mới"} disabled={saving || !!item.resolution} onPress={() => setConfirmed(true)}/>
+      <Field label="Lý do bỏ thao tác cũ *" value={reason} onChange={setReason}/>
+      <Text style={styles.body}>Bỏ thao tác cũ sẽ được ghi nhật ký. Nếu còn cần thực hiện, chọn thao tác mới theo trạng thái hiện tại.</Text>
+      <Button title="Xác nhận bỏ thao tác cũ" danger disabled={!confirmed || !reason.trim() || saving || !!item.resolution} onPress={() => { void perform(() => state.discardConflict(item.command.client_action_id, reason)); }}/></>}
+    {!!item.resolution && <Text style={styles.body}>Quyết định bỏ đã lưu trên máy, chờ máy chủ ghi nhận.</Text>}
+    {!!error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+  </Card>;
 }
 export function Card({ children }: { children: ReactNode }) { return <View style={styles.card}>{children}</View>; }
 export function Button({ title, onPress, disabled = false, danger = false }: { title: string; onPress: () => void; disabled?: boolean; danger?: boolean }) {

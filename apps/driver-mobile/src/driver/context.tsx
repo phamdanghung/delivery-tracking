@@ -3,7 +3,7 @@ import { AppState } from "react-native";
 import { useNetworkState } from "expo-network";
 import { randomUUID } from "expo-crypto";
 import { credentials, database } from "../offline/storage";
-import { Outbox, type Command, type PendingAction } from "../offline/outbox";
+import { Outbox, entityKeys, finished, type Command, type PendingAction, type Review } from "../offline/outbox";
 import { projected } from "./projection";
 
 export type Delivery = {
@@ -26,6 +26,7 @@ type State = {
   user: Session["user"] | null; cache: Cache | null; queue: PendingAction[]; ready: boolean;
   online: boolean; busy: boolean; error: string; login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>; retry: () => Promise<void>; enqueue: (action: Command["action"]) => Promise<void>;
+  reviewConflict: (id: string) => Promise<void>; discardConflict: (id: string, reason: string) => Promise<void>;
 };
 const Context = createContext<State | null>(null);
 export const useDriver = () => { const value = useContext(Context); if (!value) throw new Error("DriverProvider missing"); return value; };
@@ -112,10 +113,22 @@ export function DriverProvider({ children }: { children: ReactNode }) {
           catch (failure) {
             const status = failure instanceof ApiError ? failure.status : 0;
             if (status === 401 || status === 403) setError("Cần đăng nhập lại hoặc kiểm tra quyền; thao tác đã lưu vẫn còn");
-            return { ok: false, retryable: status === 0 || status === 401 || status >= 500,
+            return { ok: false, conflict: status === 409, retryable: status === 0 || status === 401 || status >= 500,
               error: failure instanceof Error ? failure.message : "Chưa đồng bộ được" };
           }
-        }, refreshQueue);
+        }, refreshQueue, async (command, resolution) => {
+          try {
+            await request("driver/conflicts/resolve", { command, ...resolution });
+            const data = await request("driver/today");
+            const fresh: Cache = { ...data, saved_at: new Date().toISOString() };
+            await local.save("today", fresh); setCache(fresh);
+            return { ok: true, retryable: false };
+          }
+          catch (failure) {
+            const status = failure instanceof ApiError ? failure.status : 0;
+            return { ok: false, retryable: status === 0 || status === 401 || status >= 500, error: failure instanceof Error ? failure.message : "Chưa ghi nhận quyết định bỏ" };
+          }
+        });
         const data = await request("driver/today");
         const fresh: Cache = { ...data, saved_at: new Date().toISOString() };
         await local.save("today", fresh);
@@ -139,21 +152,40 @@ export function DriverProvider({ children }: { children: ReactNode }) {
     try {
       const value: Session = await raw("auth/login", { email, password });
       if (value.user.role !== "DRIVER") throw new Error("Ứng dụng chỉ dành cho tài xế");
-      if (session.current && session.current.user.id !== value.user.id && queue.some((x) => x.state !== "SYNCED")) throw new Error("Cần đồng bộ thao tác của tài khoản hiện tại trước khi đổi tài khoản");
+      if (session.current && session.current.user.id !== value.user.id && queue.some((x) => !finished(x))) throw new Error("Cần đồng bộ thao tác của tài khoản hiện tại trước khi đổi tài khoản");
       await credentials.set(JSON.stringify(value)); await activate(value);
     } finally { setBusy(false); }
   }
   async function logout() {
     if (active.current) throw new Error("Đợi đồng bộ hoàn tất trước khi đăng xuất");
-    if ((await store.current?.list())?.some((x) => x.state !== "SYNCED")) throw new Error("Còn thao tác chưa đồng bộ; vui lòng đồng bộ trước khi đăng xuất");
+    if ((await store.current?.list())?.some((x) => !finished(x))) throw new Error("Còn thao tác chưa đồng bộ; vui lòng đồng bộ trước khi đăng xuất");
     await request("auth/logout", { refresh_token: session.current?.refresh_token });
     await credentials.remove(); session.current = null; store.current = null; setUser(null); setCache(null); setQueue([]);
   }
   async function enqueue(action: Command["action"]) {
     if (!store.current) throw new Error("Cần đăng nhập trước khi lưu thao tác");
-    await store.current.enqueue({ client_action_id: randomUUID(), occurred_at: new Date().toISOString(), action });
+    const command = { client_action_id: randomUUID(), occurred_at: new Date().toISOString(), action };
+    const keys = entityKeys(command, (await store.current.load<Cache>("today"))?.trips);
+    if ((await store.current.list()).some((x) => x.state === "CONFLICT" && (x.entity_keys ?? entityKeys(x.command)).some((key) => keys.includes(key)))) throw new Error("Điểm giao đang cần xử lý conflict; xem dữ liệu mới và xác nhận bỏ thao tác cũ trước");
+    await store.current.enqueue(command, keys);
     refreshQueue(); void syncRef.current();
   }
   async function retry() { setError(""); await store.current?.retry(); await synchronize(); }
-  return <Context.Provider value={{ user, cache, queue, ready, online, busy, error, login, logout, retry, enqueue }}>{children}</Context.Provider>;
+  async function reviewConflict(id: string) {
+    if (!online || !store.current || active.current) throw new Error("Cần kết nối máy chủ và đợi đồng bộ để xem dữ liệu mới");
+    const local = store.current;
+    const item = (await local.list()).find((x) => x.command.client_action_id === id && x.state === "CONFLICT");
+    if (!item || item.resolution) throw new Error("Conflict đang được xử lý");
+    const data = await request("driver/today");
+    const review: Review = await request("driver/conflicts/review", item.command);
+    const fresh: Cache = { ...data, saved_at: new Date().toISOString() };
+    await local.save("today", fresh); setCache(fresh);
+    await local.reviewed(id, review); setQueue(await local.list());
+  }
+  async function discardConflict(id: string, reason: string) {
+    if (!store.current) throw new Error("Cần đăng nhập");
+    await store.current.discard(id, reason, new Date().toISOString());
+    setQueue(await store.current.list()); void syncRef.current();
+  }
+  return <Context.Provider value={{ user, cache, queue, ready, online, busy, error, login, logout, retry, enqueue, reviewConflict, discardConflict }}>{children}</Context.Provider>;
 }

@@ -190,3 +190,197 @@ def test_real_postgis_geofence_hysteresis_and_offline_correction_replay(context)
             and x["after_json"]["status"] == "EN_ROUTE"
             for x in audits
         )
+
+
+def test_conflict_review_discard_replacement_and_idempotent_audit(context):
+    client, engine, _, tokens = context
+    trip = planned(context)
+    assert send(context, command("START_TRIP", trip["id"])).status_code == 200
+    first, other = [x["delivery_id"] for x in trip["stops"][:2]]
+    stale = command("STATUS", first, {"from_status": "ARRIVED", "to_status": "DELIVERING"})
+    assert send(context, stale).status_code == 409
+    assert send(context, stale).status_code == 409
+    independent = command("STATUS", other, {"from_status": "EN_ROUTE", "to_status": "ARRIVED"})
+    assert send(context, independent).status_code == 200
+    assert send(context, independent).status_code == 200
+
+    def review():
+        response = client.post(
+            "/api/v1/driver/conflicts/review", json=stale, headers=header(tokens, "DRIVER")
+        )
+        assert response.status_code == 200, response.text
+        return response.json()
+
+    viewed = review()
+    assert viewed["state"]["delivery"]["status"] == "EN_ROUTE"
+    resolution = {
+        "command": stale,
+        "review_token": viewed["review_token"],
+        "reason": "Đã xem dữ liệu mới; bỏ thao tác cũ",
+        "decided_at": datetime.now(UTC).isoformat(),
+    }
+    # A later server transition invalidates the review, even if the device was offline.
+    arrived = command("STATUS", first, {"from_status": "EN_ROUTE", "to_status": "ARRIVED"})
+    assert send(context, arrived).status_code == 200
+    response = client.post(
+        "/api/v1/driver/conflicts/resolve", json=resolution, headers=header(tokens, "DRIVER")
+    )
+    assert response.status_code == 409
+    resolution["review_token"] = review()["review_token"]
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(
+            pool.map(
+                lambda _: client.post(
+                    "/api/v1/driver/conflicts/resolve",
+                    json=resolution,
+                    headers=header(tokens, "DRIVER"),
+                ),
+                range(2),
+            )
+        )
+    assert all(x.status_code == 200 for x in responses)
+    assert responses[0].json()["state"] == "DISCARDED"
+    assert (
+        client.post(
+            "/api/v1/driver/conflicts/resolve", json=resolution, headers=header(tokens, "DRIVER")
+        ).status_code
+        == 200
+    )
+    assert send(context, stale).status_code == 409  # Never mutate/reuse the original receipt.
+    replacement = command("STATUS", first, {"from_status": "ARRIVED", "to_status": "DELIVERING"})
+    replacement["replaces_client_action_id"] = stale["client_action_id"]
+    assert send(context, replacement).status_code == 200
+    assert send(context, replacement).status_code == 200
+    assert (
+        client.post(
+            "/api/v1/driver/conflicts/resolve", json=resolution, headers=header(tokens, "DRIVER")
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            "/api/v1/driver/conflicts/resolve",
+            json={**resolution, "reason": "mutated"},
+            headers=header(tokens, "DRIVER"),
+        ).status_code
+        == 409
+    )
+    assert (
+        client.post(
+            "/api/v1/driver/conflicts/review", json=stale, headers=header(tokens, "DISPATCHER")
+        ).status_code
+        == 403
+    )
+    with engine.connect() as db:
+        row = (
+            db.execute(
+                text("SELECT * FROM driver_conflict_resolutions WHERE client_action_id=:id"),
+                {"id": stale["client_action_id"]},
+            )
+            .mappings()
+            .one()
+        )
+        assert str(row["replacement_client_action_id"]) == replacement["client_action_id"]
+        assert row["command_json"]["action"] == stale["action"]
+        assert row["decided_at"] and row["created_at"] and row["actor_user_id"]
+        audit = (
+            db.execute(
+                text("""SELECT * FROM audit_logs WHERE resource_type='driver_action'
+          AND resource_id IN (:old,:new) ORDER BY created_at"""),
+                {"old": stale["client_action_id"], "new": replacement["client_action_id"]},
+            )
+            .mappings()
+            .all()
+        )
+        assert [x["action"] for x in audit] == [
+            "OFFLINE_CONFLICT",
+            "OFFLINE_CONFLICT_DISCARDED",
+            "OFFLINE_CONFLICT_REPLACEMENT",
+        ]
+        assert all(
+            x["actor_user_id"] and x["created_at"] and x["reason"] and x["before_json"]["action"]
+            for x in audit
+        )
+        assert audit[-1]["after_json"]["old_client_action_id"] == stale["client_action_id"]
+        assert (
+            db.scalar(
+                text(
+                    "SELECT count(*) FROM delivery_status_events WHERE delivery_id=:id "
+                    "AND to_status='DELIVERING'"
+                ),
+                {"id": first},
+            )
+            == 1
+        )
+        assert (
+            db.scalar(
+                text(
+                    "SELECT count(*) FROM delivery_status_events WHERE delivery_id=:id "
+                    "AND to_status='ARRIVED'"
+                ),
+                {"id": other},
+            )
+            == 1
+        )
+
+
+def test_conflict_original_payload_and_review_are_required(context):
+    client, _, _, tokens = context
+    trip = planned(context)
+    delivery = trip["stops"][0]["delivery_id"]
+    old = command("STATUS", delivery, {"from_status": "ARRIVED", "to_status": "DELIVERING"})
+    assert send(context, old).status_code == 409
+    changed = {**old, "action": {**old["action"], "resource_id": trip["stops"][1]["delivery_id"]}}
+    assert (
+        client.post(
+            "/api/v1/driver/conflicts/review", json=changed, headers=header(tokens, "DRIVER")
+        ).status_code
+        == 409
+    )
+    assert (
+        client.post(
+            "/api/v1/driver/conflicts/review",
+            json=command("START_TRIP", trip["id"]),
+            headers=header(tokens, "DRIVER"),
+        ).status_code
+        == 404
+    )
+    data = {
+        "command": old,
+        "review_token": "0" * 64,
+        "reason": "Xác nhận bỏ",
+        "decided_at": datetime.now(UTC).isoformat(),
+    }
+    assert (
+        client.post(
+            "/api/v1/driver/conflicts/resolve", json=data, headers=header(tokens, "DRIVER")
+        ).status_code
+        == 409
+    )
+    assert (
+        client.post(
+            "/api/v1/driver/conflicts/resolve",
+            json={**data, "reason": " "},
+            headers=header(tokens, "DRIVER"),
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post(
+            f"/api/v1/deliveries/{delivery}/status",
+            json={"from_status": "ASSIGNED", "to_status": "CANCELLED", "reason": "Điều phối hủy"},
+            headers=header(tokens),
+        ).status_code
+        == 200
+    )
+    reviewed = client.post(
+        "/api/v1/driver/conflicts/review", json=old, headers=header(tokens, "DRIVER")
+    )
+    assert reviewed.status_code == 200
+    data["review_token"] = reviewed.json()["review_token"]
+    assert (
+        client.post(
+            "/api/v1/driver/conflicts/resolve", json=data, headers=header(tokens, "DRIVER")
+        ).status_code
+        == 200
+    )

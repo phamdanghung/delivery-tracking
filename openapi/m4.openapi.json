@@ -1582,6 +1582,98 @@
         }
       }
     },
+    "/api/v1/driver/conflicts/review": {
+      "post": {
+        "tags": [
+          "driver-offline"
+        ],
+        "summary": "Review Conflict",
+        "operationId": "review_conflict_api_v1_driver_conflicts_review_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfflineCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictReview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/driver/conflicts/resolve": {
+      "post": {
+        "tags": [
+          "driver-offline"
+        ],
+        "summary": "Resolve Conflict",
+        "operationId": "resolve_conflict_api_v1_driver_conflicts_resolve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConflictResolution"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictResolved"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/driver/today": {
       "get": {
         "tags": [
@@ -1879,6 +1971,83 @@
           "scheduled_date"
         ],
         "title": "Commitment"
+      },
+      "ConflictResolution": {
+        "properties": {
+          "command": {
+            "$ref": "#/components/schemas/OfflineCommand"
+          },
+          "review_token": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Review Token"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason"
+          },
+          "decided_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Decided At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "command",
+          "review_token",
+          "reason",
+          "decided_at"
+        ],
+        "title": "ConflictResolution"
+      },
+      "ConflictResolved": {
+        "properties": {
+          "client_action_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Client Action Id"
+          },
+          "state": {
+            "type": "string",
+            "const": "DISCARDED",
+            "title": "State",
+            "default": "DISCARDED"
+          }
+        },
+        "type": "object",
+        "required": [
+          "client_action_id"
+        ],
+        "title": "ConflictResolved"
+      },
+      "ConflictReview": {
+        "properties": {
+          "review_token": {
+            "type": "string",
+            "title": "Review Token"
+          },
+          "state": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "State"
+          },
+          "conflict": {
+            "type": "string",
+            "title": "Conflict"
+          }
+        },
+        "type": "object",
+        "required": [
+          "review_token",
+          "state",
+          "conflict"
+        ],
+        "title": "ConflictReview"
       },
       "CorrectionAction": {
         "properties": {
@@ -3177,6 +3346,18 @@
                 "STATUS": "#/components/schemas/StatusAction"
               }
             }
+          },
+          "replaces_client_action_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replaces Client Action Id"
           }
         },
         "additionalProperties": false,
