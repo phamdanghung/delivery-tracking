@@ -27,6 +27,7 @@ type State = {
   online: boolean; busy: boolean; error: string; login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>; retry: () => Promise<void>; enqueue: (action: Command["action"]) => Promise<void>;
   reviewConflict: (id: string) => Promise<void>; discardConflict: (id: string, reason: string) => Promise<void>;
+  replacementId: string | null; selectReplacement: (id: string | null) => void;
 };
 const Context = createContext<State | null>(null);
 export const useDriver = () => { const value = useContext(Context); if (!value) throw new Error("DriverProvider missing"); return value; };
@@ -43,6 +44,7 @@ export function DriverProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [replacementId, setReplacementId] = useState<string | null>(null);
   async function raw(path: string, body?: unknown, token?: string) {
     if (!apiBase) throw new Error("Thiếu cấu hình EXPO_PUBLIC_API_URL");
     const controller = new AbortController();
@@ -79,6 +81,7 @@ export function DriverProvider({ children }: { children: ReactNode }) {
     await next.init();
     store.current = next; session.current = value;
     setUser(value.user); setCache(await next.load<Cache>("today")); setQueue(await next.list());
+    setReplacementId(null);
   }
   useEffect(() => {
     let alive = true;
@@ -160,14 +163,17 @@ export function DriverProvider({ children }: { children: ReactNode }) {
     if (active.current) throw new Error("Đợi đồng bộ hoàn tất trước khi đăng xuất");
     if ((await store.current?.list())?.some((x) => !finished(x))) throw new Error("Còn thao tác chưa đồng bộ; vui lòng đồng bộ trước khi đăng xuất");
     await request("auth/logout", { refresh_token: session.current?.refresh_token });
-    await credentials.remove(); session.current = null; store.current = null; setUser(null); setCache(null); setQueue([]);
+    await credentials.remove(); session.current = null; store.current = null; setUser(null); setCache(null); setQueue([]); setReplacementId(null);
   }
   async function enqueue(action: Command["action"]) {
     if (!store.current) throw new Error("Cần đăng nhập trước khi lưu thao tác");
     const command = { client_action_id: randomUUID(), occurred_at: new Date().toISOString(), action };
     const keys = entityKeys(command, (await store.current.load<Cache>("today"))?.trips);
-    if ((await store.current.list()).some((x) => x.state === "CONFLICT" && (x.entity_keys ?? entityKeys(x.command)).some((key) => keys.includes(key)))) throw new Error("Điểm giao đang cần xử lý conflict; xem dữ liệu mới và xác nhận bỏ thao tác cũ trước");
-    await store.current.enqueue(command, keys);
+    const items = await store.current.list();
+    if (items.some((x) => x.state === "CONFLICT" && (x.entity_keys ?? entityKeys(x.command)).some((key) => keys.includes(key)))) throw new Error("Điểm giao đang cần xử lý conflict; xem dữ liệu mới và xác nhận bỏ thao tác cũ trước");
+    const selected = items.find((x) => x.command.client_action_id === replacementId && x.command.action.resource_id === action.resource_id && (x.command.action.kind === "START_TRIP") === (action.kind === "START_TRIP"));
+    await store.current.enqueue(command, keys, selected?.command.client_action_id);
+    if (selected) setReplacementId(null);
     refreshQueue(); void syncRef.current();
   }
   async function retry() { setError(""); await store.current?.retry(); await synchronize(); }
@@ -187,5 +193,5 @@ export function DriverProvider({ children }: { children: ReactNode }) {
     await store.current.discard(id, reason, new Date().toISOString());
     setQueue(await store.current.list()); void syncRef.current();
   }
-  return <Context.Provider value={{ user, cache, queue, ready, online, busy, error, login, logout, retry, enqueue, reviewConflict, discardConflict }}>{children}</Context.Provider>;
+  return <Context.Provider value={{ user, cache, queue, ready, online, busy, error, login, logout, retry, enqueue, reviewConflict, discardConflict, replacementId, selectReplacement: setReplacementId }}>{children}</Context.Provider>;
 }

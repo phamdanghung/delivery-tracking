@@ -22,6 +22,7 @@ export function Page({ title, children }: { title: string; children: ReactNode }
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text accessibilityRole="header" style={styles.title}>{title}</Text>
       {!!state.error && <Text accessibilityRole="alert" style={styles.error}>{state.error}</Text>}
+      {!!state.replacementId && <Card><Text style={styles.body}>Đã chọn liên kết với thao tác đã bỏ. Mở đúng điểm giao/chuyến, xem trạng thái hiện tại rồi chọn thao tác mới. Payload cũ không được dùng lại.</Text><Button title="Hủy chọn liên kết" onPress={() => state.selectReplacement(null)}/></Card>}
       {state.queue.filter((x) => x.state === "CONFLICT").map((item) => <ConflictCard key={item.command.client_action_id} item={item}/>)}
       {children}
     </ScrollView>

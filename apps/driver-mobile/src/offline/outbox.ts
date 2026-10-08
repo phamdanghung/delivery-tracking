@@ -54,12 +54,13 @@ export class Outbox {
     this.tail = operation.catch(() => {});
     return operation;
   }
-  async enqueue(command: Command, keys = entityKeys(command)) {
+  async enqueue(command: Command, keys = entityKeys(command), replacesId?: string) {
     await this.update((items) => {
       const old = items.find((x) => x.command.client_action_id === command.client_action_id);
       if (old && JSON.stringify(old.command) !== JSON.stringify(command)) throw new Error("Mã thao tác đã được dùng");
       if (old) return items;
-      const previous = [...items].reverse().find((x) => x.state === "DISCARDED" && !x.replacement_id && x.command.action.resource_id === command.action.resource_id && (x.command.action.kind === "START_TRIP") === (command.action.kind === "START_TRIP"));
+      const previous = replacesId ? items.find((x) => x.command.client_action_id === replacesId && x.state === "DISCARDED" && !x.replacement_id && x.command.action.resource_id === command.action.resource_id && (x.command.action.kind === "START_TRIP") === (command.action.kind === "START_TRIP")) : undefined;
+      if (replacesId && !previous) throw new Error("Chọn conflict đã bỏ của cùng điểm/chuyến để liên kết thao tác mới");
       const linked = previous ? { ...command, replaces_client_action_id: previous.command.client_action_id } : command;
       return [...items.map((x) => x === previous ? { ...x, replacement_id: linked.client_action_id } : x), { command: linked, entity_keys: keys, state: "WAITING" }];
     });
