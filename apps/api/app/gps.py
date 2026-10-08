@@ -6,7 +6,7 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Connection
 
@@ -98,6 +98,7 @@ def ingest(db: Connection, raw: dict[str, Any]) -> bool:
     item = normalize(raw)
     if not item["valid"] or not isinstance(item["position_id"], int):
         return False
+    db.execute(text("SELECT pg_advisory_xact_lock(73210402)"))
     vehicles, snapshots, events = (
         table("vehicles", db),
         table("gps_snapshots", db),
@@ -155,6 +156,9 @@ def ingest(db: Connection, raw: dict[str, Any]) -> bool:
     db.execute(
         statement.on_conflict_do_update(index_elements=[snapshots.c.vehicle_id], set_=values)
     )
+    from app.geofence import process_position
+
+    process_position(db, vehicle_id, item)
     return True
 
 

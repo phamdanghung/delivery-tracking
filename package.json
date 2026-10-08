@@ -8,11 +8,12 @@
     "packages/shared"
   ],
   "scripts": {
+    "postinstall": "node scripts/patch_query_string_interop.cjs",
     "dev:web": "npm run dev --workspace @fleet/admin-web",
     "dev:mobile": "npm run start --workspace @fleet/driver-mobile",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "node --test packages/shared/tests/*.test.mjs",
+    "test": "node --test packages/shared/tests/*.test.mjs && node --experimental-transform-types --test apps/driver-mobile/tests/*.test.mjs",
     "build:web": "npm run build --workspace @fleet/admin-web",
     "build:mobile": "npm run export --workspace @fleet/driver-mobile"
   },
@@ -23,7 +24,8 @@
   "overrides": {
     "xcode": {
       "uuid": "11.1.1"
-    }
+    },
+    "decode-uri-component": "0.5.0"
   },
   "packageManager": "npm@12.2.0"
 }

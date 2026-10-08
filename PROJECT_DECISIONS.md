@@ -324,6 +324,31 @@ Theo dõi:
 - Nếu upstream có bản vá sớm hơn: ưu tiên nâng cấp và chạy lại đầy đủ npm ci, build, Android/iOS export, test, Docker/stack/health và CI remote.
 - Nếu advisory đi vào runtime attack surface thực tế ở milestone sau: dừng phần liên quan và đánh giá lại; không tự suy rộng quyết định này.
 
+### DEC-034 — Sửa ARRIVED và geofence re-arm M4
+- Ngày chốt: 07/10/2026.
+- Milestone liên quan: M4.
+- Quyết định: bổ sung DEC-004, chỉ cho sửa ARRIVED → EN_ROUTE; trip vẫn ACTIVE; bắt buộc lý do và audit actor/time/old_state/new_state/reason. Không thêm transition ngược khác.
+- Phạm vi: sau manual correction, khóa auto-ARRIVED cho stop đó; GPS vẫn ở trong 50m không được đánh dấu lại. Ngưỡng vào ≤50m; chỉ re-arm khi GPS hợp lệ xác nhận xe đã ra ngoài >70m, sau đó lần vào ≤50m tiếp theo mới được auto-ARRIVED.
+- Không áp dụng cho: re-arm bằng timeout đơn thuần hoặc transition ngược khác.
+- Ghi chú: phải idempotent, không duplicate ARRIVED event; offline sync giữ thứ tự event và không làm auto-ARRIVED lặp sau reconnect. Giữ nguyên DEC-004 và các DEC cũ.
+
+### DEC-035 — Accepted Risk cho M4
+- Ngày chốt: 08/10/2026.
+- Milestone liên quan: M4.
+- Quyết định: chủ dự án chấp nhận tạm thời `braces GHSA-vfj7-8cjw-p6xm` và `node-forge GHSA-86w9-cpqp-85rv` cho M4 development/local/CI. Không áp dụng production; không coi advisory đã vá hoặc miễn trừ kiểm soát bảo mật khác.
+- Điều kiện: repo/config/cert đáng tin cậy; Metro/Compose chỉ expose phạm vi cần thiết/loopback; không `npm audit fix --force`, không downgrade Expo/React Native chỉ để audit về 0, không suppress/ẩn advisory; giữ npm audit và runtime-surface gates trong CI/report.
+- Theo dõi: review muộn nhất **02/11/2026** hoặc trước production, mốc nào đến trước. Có patch upstream hoặc advisory vào runtime attack surface thì đánh giá lại ngay; ưu tiên patch và xác minh lại các bước bị ảnh hưởng.
+- Ghi chú: quyết định riêng cho M4, giữ nguyên DEC-023/024/029/033. Chỉ kết luận M4 PASS WITH ACCEPTED RISK khi không còn blocker khác.
+
+### DEC-036 — Offline conflict 409 theo từng entity
+- Ngày chốt: 08/10/2026.
+- Milestone liên quan: M4.
+- Quyết định: HTTP 409 chuyển action sang CONFLICT/CẦN XỬ LÝ; giữ payload và client_action_id cũ. Không tự sửa payload, retry vô hạn hoặc replay bằng ID mới; tải lại dữ liệu server.
+- Queue: tạm dừng action phụ thuộc cùng delivery/stop; action khác không phụ thuộc tiếp tục sync, không khóa toàn bộ queue tài xế. Giữ thứ tự trong từng chuỗi phụ thuộc, gồm START_TRIP và các stop của chuyến đó.
+- UI: chỉ rõ dữ liệu thay đổi và action conflict, yêu cầu tài xế xem dữ liệu mới. Sau khi xem, tài xế được xác nhận bỏ action cũ; giữ action để audit, đánh dấu DISCARDED/RESOLVED, không xóa. Nếu còn cần, tạo command mới dựa trạng thái mới nhất với ID mới; không mutate/tái sử dụng command cũ.
+- Audit: actor, thời điểm, action cũ, lý do/conflict, quyết định bỏ hoặc command thay thế; liên kết command mới/cũ nếu có. Quyết định bỏ phải được server ghi nhận idempotently; mất mạng/restart không làm mất action hoặc audit.
+- Ghi chú: bổ sung riêng cho M4; không đổi state machine nghiệp vụ, quyền hoặc POD gate; không merge PR #3 hoặc chuyển M5 khi chưa báo cáo.
+
 ## 14. Milestone boundaries
 
 ### M0

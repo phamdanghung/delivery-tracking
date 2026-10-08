@@ -76,11 +76,11 @@ CI chạy lint, typecheck, test, build web, export bundle Android/iOS, migration
 
 - `apps/api`: FastAPI, cấu hình ENV, health, migration và test.
 - `apps/admin-web`: Next.js/TypeScript, màn hình nền tảng tiếng Việt.
-- `apps/driver-mobile`: React Native/Expo, màn hình khởi tạo tiếng Việt.
+- `apps/driver-mobile`: React Native/Expo SDK 57, Driver App M4 qua Expo Router, cache/outbox SQLite và token SecureStore.
 - `packages/shared`: kiểu dữ liệu vận hành dùng chung và kiểm tra baseline.
 - `db/migrations/0001_baseline.sql`: bản sao nguyên vẹn SQL đã cung cấp.
 - `openapi/openapi.yaml`: bản sao nguyên vẹn OpenAPI nghiệp vụ.
-- `openapi/m1.openapi.json` và `openapi/m2.openapi.json`: snapshot giữ nguyên để kiểm tra tương thích. `python -m uv run --project apps/api scripts/export_openapi.py` sinh contract M3 hiện tại vào `openapi/m3.openapi.json`.
+- `openapi/m1.openapi.json` và `openapi/m2.openapi.json`: snapshot giữ nguyên để kiểm tra tương thích (cùng M3). `python -m uv run --project apps/api scripts/export_openapi.py` sinh contract hiện tại vào `openapi/m4.openapi.json`.
 - `infra/docker`, `compose.yaml`: dev stack.
 - `docs/specifications`: toàn bộ Technical Pack được giải nén, giữ nguyên nội dung.
 - `docs/requirements`: vấn đề phát hiện và truy vết M0.
@@ -113,3 +113,17 @@ ENV `OSRM_URL`, `OSRM_METADATA_PATH`, `FIXED_TIME_TOLERANCE_SECONDS=900`, `DEFAU
 CI dùng extract đường thật có phiên bản tại `infra/osrm/fixtures/Saigon.osm.pbf`, kiểm SHA256 rồi tự dựng graph. Nguồn/ODbL ghi trong README cạnh file; tránh timeout nguồn tải công khai, không dùng mock. Có thể dùng cùng input local với `prepare_osrm.py --pbf infra/osrm/fixtures/Saigon.osm.pbf --sha256 305729efc04180b6a151ba3d61f6bb5c91b05ed044eed734b30f3625f806119b`.
 
 OR-Tools giữ thứ tự tối ưu số điểm vi phạm → km → thời gian. Ngân sách solver cấu hình được; nếu hết thời gian trước khi chứng minh tối ưu toàn cục, kết quả nêu cảnh báo và mục tiêu đã chứng minh. Hard time gate vẫn kiểm tra trước duyệt. CI có OSRM/PostGIS/Traccar thật, giữ `npm ci` audit và các runtime-surface gates. M3 không mở M4; accepted risk M2 không tự áp dụng M3.
+
+## M4 — tài xế / offline / geofence
+
+Áp dụng `docs/requirements/M4_SCOPE.md`, DEC-034 và contract `openapi/m4.openapi.json`; migration `0005` giữ receipts theo actor/client_action_id và trạng thái geofence từng stop. GET `/api/v1/driver/today` trả chuyến đã duyệt của chính tài xế, gồm chuyến ACTIVE qua ngày; POST `/api/v1/driver/actions` đồng bộ tuần tự, replay cùng id trả receipt, không nhân đôi nghiệp vụ/audit. Các contract M1–M3 không đổi.
+
+Driver App dùng ENV `EXPO_PUBLIC_API_URL` (copy vào `apps/driver-mobile/.env.local` nếu chạy Metro riêng). Metro chỉ loopback. SQLite lưu cache/queue theo user trước khi báo thành công; SecureStore lưu token trên native. App tải lại khi reconnect/foreground, hiển thị thao tác chờ/lỗi và thử lại. Web preview dùng cache trình duyệt và token chỉ trong bộ nhớ; không thay bằng chứng SQLite/native export. Khi đồng bộ thành công nhưng tải cache mới thất bại, trạng thái đã được xác nhận vẫn được lưu trên máy.
+
+Geofence dùng vị trí Traccar hợp lệ/fresh và PostGIS thật, không GPS điện thoại. DEC-034 chỉ sửa ARRIVED → EN_ROUTE có lý do/audit, giữ ACTIVE; khóa auto-arrival đến GPS mới >70m, lần tiếp theo vào ≤50m mới ARRIVED. Không dùng timeout re-arm. Web điều phối và app tài xế đều tham chiếu event ARRIVED đang sửa, ngăn cache cũ đảo lần đến mới.
+
+Không mở camera/POD M5: giao thành công vẫn bị chặn nếu chưa có bằng chứng hợp lệ. Giao thất bại cần lý do; tài xế chỉ đề xuất lịch giao lại theo DEC-011, điều phối xác nhận mới có hiệu lực. Không triển khai chi phí M7.
+
+DEC-036: HTTP 409 giữ CONFLICT cùng payload/id; chỉ chặn các action phụ thuộc cùng entity, không chặn điểm khác. POST `/api/v1/driver/conflicts/review` tải trạng thái mới; `/resolve` xác nhận bỏ với lý do, kiểm snapshot còn hiện hành, ghi audit và giữ DISCARDED. Migration `0006` giữ quyết định/replacement link. Quyết định offline/retry idempotent; command mới có ID mới và `replaces_client_action_id`, không mutate/replay command cũ.
+
+Expo SDK giữ 57, React Native giữ 0.86.3. Router kéo `query-string` 7; override decoder lên upstream `decode-uri-component` 0.5.0 đã vá GHSA-vcc3-ghjq-m6fr. `scripts/patch_query_string_interop.cjs` chỉ chuyển import CJS sang ESM default, kiểm version/source và fail closed; không thay thuật toán hoặc che advisory. Dùng npm 12.2.0 đúng packageManager để áp dụng override `xcode → uuid` 11.1.1. Audit và runtime-surface gates tiếp tục chạy. DEC-035 chấp nhận tạm thời hai advisory cho M4 development/local/CI; không production, review muộn nhất 02/11/2026 hoặc trước production.
