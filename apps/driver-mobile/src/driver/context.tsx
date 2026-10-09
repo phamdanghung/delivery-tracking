@@ -5,12 +5,14 @@ import { randomUUID } from "expo-crypto";
 import { credentials, database } from "../offline/storage";
 import { Outbox, entityKeys, finished, type Command, type PendingAction, type Review } from "../offline/outbox";
 import { projected } from "./projection";
+import { readAsset } from "../pod/assets";
 
 export type Delivery = {
   id: string; code: string; recipient_name: string; recipient_phone: string; address_text: string;
   latitude: number | null; longitude: number | null; notes: string | null; status: string;
   commitment_type: string; appointment_at: string | null; window_start: string | null;
   window_end: string | null; deadline_at: string | null; eta_at: string | null;
+  trip_id?: string | null;
 };
 export type Detail = { delivery: Delivery; events: { id: string; to_status: string; event_time: string; actor_name: string | null; reason: string | null }[] };
 export type Trip = { id: string; plate_no: string; status: string; stops: { id: string; delivery_id: string; sequence_no: number; status: string; eta_at: string | null }[] };
@@ -18,6 +20,7 @@ export type Cache = {
   trips: Trip[]; deliveries: Record<string, Detail>; saved_at: string;
   route_stops: Record<string, { distance_m: number; violation: string | null; window_end: string | null }>;
   gps: Record<string, { freshness: "NORMAL" | "STALE" | "LOST"; gps_at: string | null }>;
+  pod_photos?: Record<string, { id: string; trip_stop_id: string | null }[]>;
 };
 type Session = { access_token: string; refresh_token: string; user: { id: string; role: string; full_name: string } };
 class ApiError extends Error { constructor(readonly status: number, message: string) { super(message); } }
@@ -28,6 +31,7 @@ type State = {
   logout: () => Promise<void>; retry: () => Promise<void>; enqueue: (action: Command["action"]) => Promise<void>;
   reviewConflict: (id: string) => Promise<void>; discardConflict: (id: string, reason: string) => Promise<void>;
   replacementId: string | null; selectReplacement: (id: string | null) => void;
+  savePod: (id: string, value: unknown) => Promise<void>; loadPod: <T>(id: string) => Promise<T | null>;
 };
 const Context = createContext<State | null>(null);
 export const useDriver = () => { const value = useContext(Context); if (!value) throw new Error("DriverProvider missing"); return value; };
@@ -83,6 +87,11 @@ export function DriverProvider({ children }: { children: ReactNode }) {
     setUser(value.user); setCache(await next.load<Cache>("today")); setQueue(await next.list());
     setReplacementId(null);
   }
+  async function freshCache(): Promise<Cache> {
+    const data: Cache = await request("driver/today");
+    const photos = await Promise.all(Object.keys(data.deliveries).map(async (id) => [id, await request(`deliveries/${id}/pod/photos`)] as const));
+    return { ...data, pod_photos: Object.fromEntries(photos), saved_at: new Date().toISOString() };
+  }
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -102,6 +111,29 @@ export function DriverProvider({ children }: { children: ReactNode }) {
         const local = store.current!;
         await local.sync(async (command) => {
           try {
+            if (command.action.kind === "POD_UPLOAD") {
+              const metadata = command.action.data as { sha256: string };
+              const asset = await local.load<{ content_type: string }>(`pod.${command.client_action_id}`);
+              if (!asset) throw new Error("Không tìm thấy thông tin ảnh đã lưu");
+              const bytes = await readAsset(session.current!.user.id, command.client_action_id, metadata.sha256);
+              const upload = async () => {
+                const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 30000);
+                try {
+                  const encoded = JSON.stringify(command.action.data).replace(/[^\x20-\x7E]/g, (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, "0")}`);
+                  const result = await fetch(`${apiBase}/api/v1/deliveries/${command.action.resource_id}/pod/photos`, {
+                    method: "POST", signal: controller.signal, body: bytes.buffer,
+                    headers: { "Content-Type": asset.content_type, "X-POD-Metadata": encoded, Authorization: `Bearer ${session.current!.access_token}` },
+                  });
+                  if (!result.ok) { const data = await result.json(); throw new ApiError(result.status, typeof data.detail === "string" ? data.detail : "Không upload được ảnh"); }
+                } finally { clearTimeout(timer); }
+              };
+              try { await upload(); }
+              catch (failure) {
+                if (failure instanceof ApiError && failure.status === 401) { await request("auth/me"); await upload(); }
+                else if (!(failure instanceof ApiError && failure.status === 409)) throw failure;
+                // 409 goes through the durable command receipt for M4 conflict review/audit.
+              }
+            }
             const response = await request("driver/actions", command);
             // Persist the acknowledged state before marking SYNCED. A failed refresh
             // must not restore an old ARRIVED after a successful correction.
@@ -122,8 +154,7 @@ export function DriverProvider({ children }: { children: ReactNode }) {
         }, refreshQueue, async (command, resolution) => {
           try {
             await request("driver/conflicts/resolve", { command, ...resolution });
-            const data = await request("driver/today");
-            const fresh: Cache = { ...data, saved_at: new Date().toISOString() };
+            const fresh = await freshCache();
             await local.save("today", fresh); setCache(fresh);
             return { ok: true, retryable: false };
           }
@@ -132,8 +163,7 @@ export function DriverProvider({ children }: { children: ReactNode }) {
             return { ok: false, retryable: status === 0 || status === 401 || status >= 500, error: failure instanceof Error ? failure.message : "Chưa ghi nhận quyết định bỏ" };
           }
         });
-        const data = await request("driver/today");
-        const fresh: Cache = { ...data, saved_at: new Date().toISOString() };
+        const fresh = await freshCache();
         await local.save("today", fresh);
         setCache(fresh); setError("");
       } catch (failure) {
@@ -167,7 +197,7 @@ export function DriverProvider({ children }: { children: ReactNode }) {
   }
   async function enqueue(action: Command["action"]) {
     if (!store.current) throw new Error("Cần đăng nhập trước khi lưu thao tác");
-    const command = { client_action_id: randomUUID(), occurred_at: new Date().toISOString(), action };
+    const command = { client_action_id: action.kind === "POD_UPLOAD" ? (action.data as { client_action_id: string }).client_action_id : randomUUID(), occurred_at: new Date().toISOString(), action };
     const keys = entityKeys(command, (await store.current.load<Cache>("today"))?.trips);
     const items = await store.current.list();
     if (items.some((x) => x.state === "CONFLICT" && (x.entity_keys ?? entityKeys(x.command)).some((key) => keys.includes(key)))) throw new Error("Điểm giao đang cần xử lý conflict; xem dữ liệu mới và xác nhận bỏ thao tác cũ trước");
@@ -182,9 +212,8 @@ export function DriverProvider({ children }: { children: ReactNode }) {
     const local = store.current;
     const item = (await local.list()).find((x) => x.command.client_action_id === id && x.state === "CONFLICT");
     if (!item || item.resolution) throw new Error("Conflict đang được xử lý");
-    const data = await request("driver/today");
+    const fresh = await freshCache();
     const review: Review = await request("driver/conflicts/review", item.command);
-    const fresh: Cache = { ...data, saved_at: new Date().toISOString() };
     await local.save("today", fresh); setCache(fresh);
     await local.reviewed(id, review); setQueue(await local.list());
   }
@@ -193,5 +222,7 @@ export function DriverProvider({ children }: { children: ReactNode }) {
     await store.current.discard(id, reason, new Date().toISOString());
     setQueue(await store.current.list()); void syncRef.current();
   }
-  return <Context.Provider value={{ user, cache, queue, ready, online, busy, error, login, logout, retry, enqueue, reviewConflict, discardConflict, replacementId, selectReplacement: setReplacementId }}>{children}</Context.Provider>;
+  async function savePod(id: string, value: unknown) { if (!store.current) throw new Error("Cần đăng nhập"); await store.current.save(`pod.${id}`, value); }
+  async function loadPod<T>(id: string) { return store.current ? store.current.load<T>(`pod.${id}`) : null; }
+  return <Context.Provider value={{ user, cache, queue, ready, online, busy, error, login, logout, retry, enqueue, reviewConflict, discardConflict, replacementId, selectReplacement: setReplacementId, savePod, loadPod }}>{children}</Context.Provider>;
 }

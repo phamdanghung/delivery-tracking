@@ -25,7 +25,9 @@
     "plugins": [
       "expo-router",
       "expo-sqlite",
-      "expo-secure-store"
+      "expo-secure-store",
+      ["expo-image-picker", {"photosPermission": "Cho phép chọn ảnh bằng chứng giao hàng.", "cameraPermission": "Cho phép chụp ảnh bằng chứng giao hàng.", "microphonePermission": false}],
+      ["expo-location", {"locationWhenInUsePermission": "Cho phép ghi vị trí khi tạo ảnh bằng chứng giao hàng."}]
     ]
   }
 }

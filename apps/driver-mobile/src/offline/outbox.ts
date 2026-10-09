@@ -2,7 +2,7 @@
 export type Command = {
   client_action_id: string;
   occurred_at: string;
-  action: { kind: "START_TRIP" | "STATUS" | "PROPOSE_RESCHEDULE" | "CORRECT_ARRIVED"; resource_id: string; data?: unknown };
+  action: { kind: "START_TRIP" | "STATUS" | "PROPOSE_RESCHEDULE" | "CORRECT_ARRIVED" | "POD_UPLOAD"; resource_id: string; data?: unknown };
   replaces_client_action_id?: string;
 };
 export type Review = { review_token: string; state: Record<string, unknown>; conflict: string };

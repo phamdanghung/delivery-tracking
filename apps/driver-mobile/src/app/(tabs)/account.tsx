@@ -8,7 +8,7 @@ export default function Account() {
   const [reauth, setReauth] = useState(false);
   if (!state.user) return <Login/>;
   const labels = { WAITING: "Chờ đồng bộ", SYNCING: "Đang đồng bộ", SYNCED: "Đã đồng bộ", ERROR: "Lỗi", CONFLICT: "Cần xử lý", DISCARDED: "Đã bỏ — giữ trong nhật ký" };
-  const actions = { START_TRIP: "Bắt đầu chuyến", STATUS: "Cập nhật điểm giao", CORRECT_ARRIVED: "Sửa Đã đến", PROPOSE_RESCHEDULE: "Đề xuất giao lại" };
+  const actions = { START_TRIP: "Bắt đầu chuyến", STATUS: "Cập nhật điểm giao", CORRECT_ARRIVED: "Sửa Đã đến", PROPOSE_RESCHEDULE: "Đề xuất giao lại", POD_UPLOAD: "Tải ảnh POD" };
   const describe = (item: PendingAction) => {
     const action = item.command.action;
     const delivery = state.cache?.deliveries[action.resource_id]?.delivery;

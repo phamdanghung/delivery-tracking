@@ -349,6 +349,26 @@ Theo dõi:
 - Audit: actor, thời điểm, action cũ, lý do/conflict, quyết định bỏ hoặc command thay thế; liên kết command mới/cũ nếu có. Quyết định bỏ phải được server ghi nhận idempotently; mất mạng/restart không làm mất action hoặc audit.
 - Ghi chú: bổ sung riêng cho M4; không đổi state machine nghiệp vụ, quyền hoặc POD gate; không merge PR #3 hoặc chuyển M5 khi chưa báo cáo.
 
+### DEC-037 — GPS khi tạo POD M5
+- Ngày chốt: 08/10/2026.
+- Milestone liên quan: M5.
+- Quyết định: GPS thiếu/stale/invalid không chặn lưu/upload POD hoặc DELIVERED nếu POD và các điều kiện khác hợp lệ. GPS hợp lệ lưu latitude/longitude, fix time và freshness/status. GPS không hợp lệ ghi LOCATION_UNVERIFIED, bắt buộc tài xế xác nhận lý do và audit đầy đủ.
+- Không áp dụng cho: tọa độ giả hoặc last-known GPS cũ được coi là vị trí chụp hiện tại.
+- Ghi chú: bổ sung riêng cho metadata POD; không đổi geofence M4.
+
+### DEC-038 — Nguồn ảnh và EXIF POD M5
+- Ngày chốt: 08/10/2026.
+- Milestone liên quan: M5.
+- Quyết định: cho camera và album; nguồn CAMERA_CAPTURED hoặc ALBUM_SELECTED được audit. Metadata nghiệp vụ lấy từ app/server tại capture/select/upload; không tin time/GPS EXIF và không dùng EXIF override GPS chính thức. Loại bỏ EXIF không cần thiết khi lưu nếu không ảnh hưởng orientation/rendering.
+- Ghi chú: quyết định này làm rõ xử lý metadata ảnh; không bắt buộc chữ ký điện tử.
+
+### DEC-039 — POD theo lượt giao hiện tại M5
+- Ngày chốt: 08/10/2026.
+- Milestone liên quan: M5.
+- Quyết định: POD bắt buộc gắn delivery attempt/trip stop hiện tại. Backend chỉ cho POD của lượt hiện tại mở gate DELIVERED. FAILED → RESCHEDULED → lượt giao mới cần POD mới.
+- Không áp dụng cho: dùng lại ảnh lượt cũ để hoàn tất lượt mới hoặc xóa lịch sử POD cũ.
+- Ghi chú: giữ nguyên DEC cũ và lịch sử dữ liệu; không chuyển M6.
+
 ## 14. Milestone boundaries
 
 ### M0

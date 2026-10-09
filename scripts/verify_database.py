@@ -13,6 +13,7 @@ from sqlalchemy.engine import make_url
 root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(root / "apps/api"))
 from app.config import Settings  # noqa: E402
+from app.pod_storage import storage_client  # noqa: E402
 
 settings = Settings(_env_file=root / ".env")
 parser = argparse.ArgumentParser()
@@ -28,6 +29,9 @@ admin = create_engine(
     connect_args={"connect_timeout": 15},
 )
 test_created = False
+test_bucket = "fleet-pod-test-" + uuid4().hex
+storage = storage_client(settings)
+bucket_created = False
 
 
 def command(*args: str, url: str, test: bool = False) -> None:
@@ -40,6 +44,10 @@ def command(*args: str, url: str, test: bool = False) -> None:
         TRACCAR_PASSWORD=settings.traccar_password.get_secret_value(),
         OSRM_URL=settings.osrm_url,
         OSRM_METADATA_PATH=settings.osrm_metadata_path,
+        S3_ENDPOINT_URL=settings.s3_endpoint_url,
+        S3_ACCESS_KEY=settings.s3_access_key.get_secret_value(),
+        S3_SECRET_KEY=settings.s3_secret_key.get_secret_value(),
+        S3_BUCKET=test_bucket,
     )
     if test:
         environment["TEST_DATABASE_URL"] = url
@@ -48,11 +56,14 @@ def command(*args: str, url: str, test: bool = False) -> None:
         cwd=root / "apps/api",
         env=environment,
         check=True,
-        timeout=180,
+        timeout=600,
     )
 
 
 try:
+    storage.create_bucket(Bucket=test_bucket)
+    bucket_created = True
+    storage.put_bucket_versioning(Bucket=test_bucket, VersioningConfiguration={"Status": "Enabled"})
     dev_connection = dev_url.render_as_string(hide_password=False)
     if not options.focused:
         command("alembic", "upgrade", "head", url=dev_connection)
@@ -86,6 +97,15 @@ try:
     command("pytest", "-m", "integration", "-ra", url=test_connection, test=True)
     print("Real database verification PASS; upgrade/downgrade/upgrade PASS.")
 finally:
+    if bucket_created:
+        # Delete only the unique bucket created by this run, never the development bucket.
+        for page in storage.get_paginator("list_object_versions").paginate(Bucket=test_bucket):
+            for item in page.get("Versions", []) + page.get("DeleteMarkers", []):
+                storage.delete_object(
+                    Bucket=test_bucket, Key=item["Key"], VersionId=item["VersionId"]
+                )
+        storage.delete_bucket(Bucket=test_bucket)
+    storage.close()
     if test_created:
         with admin.connect() as connection:
             connection.exec_driver_sql(f'DROP DATABASE "{test_name}"')

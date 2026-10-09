@@ -33,7 +33,7 @@ function ConflictCard({ item }: { item: PendingAction }) {
   const [reason, setReason] = useState(""); const [confirmed, setConfirmed] = useState(false);
   const [saving, setSaving] = useState(false); const [error, setError] = useState("");
   const action = item.command.action;
-  const labels = { START_TRIP: "Bắt đầu chuyến", STATUS: "Cập nhật trạng thái", PROPOSE_RESCHEDULE: "Đề xuất giao lại", CORRECT_ARRIVED: "Sửa Đã đến nhận sai" };
+  const labels = { START_TRIP: "Bắt đầu chuyến", STATUS: "Cập nhật trạng thái", PROPOSE_RESCHEDULE: "Đề xuất giao lại", CORRECT_ARRIVED: "Sửa Đã đến nhận sai", POD_UPLOAD: "Tải ảnh POD" };
   const data = action.data as { from_status?: string; to_status?: string; reason?: string } | undefined;
   const known = state.cache?.deliveries[action.resource_id]?.delivery;
   const trip = state.cache?.trips.find((x) => x.id === action.resource_id);
