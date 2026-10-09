@@ -1,4 +1,4 @@
-name: M5 photo POD
+name: M6 customer tracking
 on: [push, pull_request]
 jobs:
   frontend:
@@ -19,11 +19,17 @@ jobs:
       - run: node scripts/verify_web_surface.mjs
       - run: npm run build:mobile
       - run: node scripts/verify_mobile_surface.mjs
-      - name: M5 full security audit and DEC-040 accepted-risk gate
-        run: node scripts/verify_m5_audit.mjs
+      - name: M6 full security audit (M5 acceptance is not inherited)
+        run: npm audit
   backend:
     runs-on: ubuntu-latest
     services:
+      redis:
+        image: redis:7.4-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 20
       traccar:
         image: traccar/traccar:6.10-ubuntu
         ports: ['8082:8082', '5055:5055']
@@ -45,6 +51,7 @@ jobs:
       DATABASE_URL: postgresql+psycopg://fleet_test:isolated_ci_test@localhost:5432/fleet_test
       TEST_DATABASE_URL: postgresql+psycopg://fleet_test:isolated_ci_test@localhost:5432/fleet_test
       APP_ENV: test
+      REDIS_URL: redis://127.0.0.1:6379/0
       TRACCAR_URL: http://127.0.0.1:8082
       TRACCAR_FEED_URL: http://127.0.0.1:5055
       TRACCAR_EMAIL: m1-ci@fleet.local

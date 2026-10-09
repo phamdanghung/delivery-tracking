@@ -450,3 +450,6 @@ textarea {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+/* CUS-01/02/03: mobile-first public tracking, no internal navigation. */
+.customer-tracking { max-width: 720px; margin: 24px auto; padding: 0 16px; }
+.customer-tracking .card { margin-bottom: 16px; }

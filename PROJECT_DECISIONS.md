@@ -386,6 +386,24 @@ Theo dõi:
 - Xác minh M5: PostgreSQL/PostGIS/Redis/Traccar/OSRM healthy, head 0007; MinIO private/versioning; API live/ready/admin-web; bootstrap/login/list rỗng PASS, không dữ liệu nghiệp vụ giả.
 - Ghi chú: thay lựa chọn runtime development, không đổi nghiệp vụ/kiến trúc/contract; chưa cho phép triển khai M6 hoặc merge PR #4.
 
+### DEC-042 — Lifecycle tracking theo lượt giao M6
+- Ngày chốt: 09/10/2026.
+- Milestone liên quan: M6.
+- Quyết định: chỉ tạo link khi EN_ROUTE/ARRIVED/DELIVERING. Link gắn lượt giao hiện tại; trước DELIVERED expires_at chưa có mốc. DELIVERED đặt hết hạn đúng +1 giờ. FAILED/CANCELLED/RESCHEDULED hoặc đổi lượt giao làm link cũ hết hiệu lực; lượt mới cần link mới.
+- Ghi chú: không thay state machine; không cho token cũ theo dõi lượt/xe khác.
+
+### DEC-043 — Cấp và thu hồi từng tracking link M6
+- Ngày chốt: 09/10/2026.
+- Milestone liên quan: M6.
+- Quyết định: ADMIN/DISPATCHER tạo và thu hồi link; plaintext chỉ trả lúc tạo, DB chỉ giữ hash. Nhiều link cùng lượt được phép; tạo mới không tự thu hồi link cũ. Thu hồi từng link qua POST /tracking-links/{id}/revoke, ghi audit. Nhân viên tự gửi qua Zalo.
+- Ghi chú: không khôi phục plaintext từ DB, không tự gửi SMS/ZNS.
+
+### DEC-044 — Privacy sau giao và ETA M6
+- Ngày chốt: 09/10/2026.
+- Milestone liên quan: M6.
+- Quyết định: trong 1 giờ sau DELIVERED chỉ trả trạng thái hoàn tất và thời điểm giao; ẩn GPS/ETA live. Khi đang giao, ETA dùng GPS fresh, OSRM self-host và các điểm còn lại/service time của tuyến đã duyệt. GPS/OSRM lỗi thì ETA chưa xác định, không giả vị trí hoặc ETA.
+- Ghi chú: public DTO không trả toàn tuyến, khách/đơn/xe khác hoặc dữ liệu nội bộ; không đổi OR-Tools M3.
+
 ## 14. Milestone boundaries
 
 ### M0
