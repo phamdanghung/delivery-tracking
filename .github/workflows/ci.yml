@@ -19,8 +19,8 @@ jobs:
       - run: node scripts/verify_web_surface.mjs
       - run: npm run build:mobile
       - run: node scripts/verify_mobile_surface.mjs
-      - name: M5 security audit (no risk acceptance inherited from M4)
-        run: npm audit
+      - name: M5 full security audit and DEC-040 accepted-risk gate
+        run: node scripts/verify_m5_audit.mjs
   backend:
     runs-on: ubuntu-latest
     services:

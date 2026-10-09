@@ -369,6 +369,23 @@ Theo dõi:
 - Không áp dụng cho: dùng lại ảnh lượt cũ để hoàn tất lượt mới hoặc xóa lịch sử POD cũ.
 - Ghi chú: giữ nguyên DEC cũ và lịch sử dữ liệu; không chuyển M6.
 
+### DEC-040 — Accepted Risk cho M5
+- Ngày chốt: 09/10/2026.
+- Milestone liên quan: M5.
+- Quyết định: chủ dự án chấp nhận tạm thời `braces GHSA-vfj7-8cjw-p6xm` và `node-forge GHSA-86w9-cpqp-85rv` cho M5 development/local/CI. Không áp dụng production và không coi advisory đã được vá hoặc miễn trừ kiểm soát bảo mật khác.
+- Điều kiện: chỉ repo/config/cert đáng tin cậy; Metro/Compose chỉ expose phạm vi cần thiết/loopback; không `npm audit fix --force`, không downgrade Expo/React Native chỉ để audit về 0, không suppress/ẩn advisory; giữ npm audit và runtime-surface gates trong CI/report.
+- Theo dõi: review muộn nhất **02/11/2026** hoặc trước production, mốc nào đến trước. Upstream có patch hoặc advisory xuất hiện trên runtime attack surface thì đánh giá lại ngay; ưu tiên patch và xác minh lại các bước liên quan.
+- Ghi chú: quyết định riêng M5; không sửa DEC accepted-risk cũ. Chỉ kết luận PASS WITH ACCEPTED RISK khi không còn blocker khác; không merge PR #4, không chuyển M6.
+
+### DEC-041 — Canonical development runtime ổn định
+- Ngày chốt: 09/10/2026.
+- Milestone liên quan: M5 và runtime development cho các milestone tiếp theo.
+- Quyết định: **fleet-delivery-dev** là canonical development runtime mới; dùng source/Compose chuẩn, database/volumes development riêng, migration chuẩn 0001 → 0007, bootstrap tối thiểu bằng script đã tài liệu hóa. Không sửa migration lịch sử hoặc seed dữ liệu nghiệp vụ giả.
+- Bảo toàn: **fleet-delivery** cũ head 0005 là PRESERVED/LEGACY; không migrate/reset/prune/xóa/ghi đè dữ liệu, không coi là production data. Giữ containers/runtime/volumes ở trạng thái lưu trữ.
+- Từ M6: reuse fleet-delivery-dev, chỉ migrate tiến lên; không tạo runtime milestone mới nếu không cần test cô lập. Test dùng project/database riêng được phép, phải cleanup đúng phạm vi và không thay canonical runtime bằng stack test.
+- Xác minh M5: PostgreSQL/PostGIS/Redis/Traccar/OSRM healthy, head 0007; MinIO private/versioning; API live/ready/admin-web; bootstrap/login/list rỗng PASS, không dữ liệu nghiệp vụ giả.
+- Ghi chú: thay lựa chọn runtime development, không đổi nghiệp vụ/kiến trúc/contract; chưa cho phép triển khai M6 hoặc merge PR #4.
+
 ## 14. Milestone boundaries
 
 ### M0
