@@ -1,7 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from time import monotonic
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 import test_m1_api
@@ -243,6 +243,30 @@ def test_osrm_unavailable_real_failure_no_fallback(context, monkeypatch):
     assert response.status_code == 200
     assert response.json()["gps"]["freshness"] == "NORMAL"
     assert response.json()["eta_at"] is None
+
+
+def test_ambiguous_serving_trip_never_exposes_vehicle_gps(context):
+    trip = started(context)
+    token = raw(link(context, trip["stops"][0]))
+    snapshot(context, trip)
+    assert public(context, token).json()["gps"] is not None
+    other = uuid4()
+    with context[1].begin() as db:
+        db.execute(
+            text("""INSERT INTO trips (id,trip_date,vehicle_id,driver_id,status)
+            VALUES (:id,:date,:vehicle,:driver,'ACTIVE')"""),
+            {
+                "id": other,
+                "date": trip["trip_date"],
+                "vehicle": trip["vehicle_id"],
+                "driver": trip["driver_id"],
+            },
+        )
+    dto = public(context, token).json()
+    assert dto["status"] == "EN_ROUTE" and dto["gps"] is None and dto["eta_at"] is None
+    with context[1].begin() as db:
+        db.execute(text("UPDATE trips SET status='COMPLETED' WHERE id=:id"), {"id": other})
+    assert public(context, token).json()["gps"] is not None
 
 
 def test_real_redis_limits_and_failure_are_closed(context, monkeypatch):

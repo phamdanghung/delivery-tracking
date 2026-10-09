@@ -266,6 +266,14 @@ def public_tracking(token: str, request: Request, db: Db) -> PublicTracking:
             result.completed_at = row["expires_at"] - timedelta(hours=1)
             result.eta_status = "COMPLETED"
             return result
+        # A vehicle assigned to several ACTIVE trips has no unambiguous serving trip.
+        # Keep M2 scheduling unchanged, but fail closed for GPS/ETA privacy.
+        active_trips = db.scalar(
+            text("SELECT count(*) FROM trips WHERE vehicle_id=:id AND status='ACTIVE'"),
+            {"id": row["vehicle_id"]},
+        )
+        if active_trips != 1:
+            return result
         snapshot = (
             db.execute(
                 text("SELECT * FROM gps_snapshots WHERE vehicle_id=:id"), {"id": row["vehicle_id"]}

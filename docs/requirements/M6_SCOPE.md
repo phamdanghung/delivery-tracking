@@ -22,6 +22,7 @@ DEC-040 accepted risk chỉ cho M5, chưa mở rộng M6. Không tự chấp nh�
 - `POST /api/v1/tracking-links/{identifier}/revoke`: ADMIN/DISPATCHER; idempotent, audit một lần, không thu hồi link khác.
 - `GET /api/v1/public/tracking/{token}`: anonymous; 200 DTO tối thiểu `code/status/completed_at/expires_at/gps/eta_at/eta_status`, 410 chung cho không hợp lệ/hết hạn/thu hồi. Không có query để chuyển delivery hoặc vehicle.
 - GPS chỉ đọc snapshot xe gắn đúng lượt; NORMAL ≤30s, STALE ≤120s, LOST >120s theo DEC-015. Snapshot cũ chỉ hiển thị vị trí ghi nhận gần nhất, không dùng tính ETA. Missing/future/invalid không tạo vị trí giả.
+- Nếu dữ liệu có nhiều chuyến ACTIVE cho cùng xe, không xác định chắc chuyến đang phục vụ: giữ thông tin đơn nhưng ẩn GPS/ETA. Đây là privacy guard; không thay quy tắc lập/bắt đầu chuyến M2.
 - ETA cộng thời gian đường thực từ GPS qua các điểm chưa hoàn tất đến điểm khách, thời gian chờ cửa sổ hẹn và service time của các điểm trước đó trong snapshot tuyến đã duyệt; không trả điểm/geometry nội bộ. Cache ETA 10s theo plan/GPS/trạng thái các điểm; mỗi request vẫn kiểm tra token/lifecycle trước khi dùng cache. OSRM/GPS không hợp lệ trả UNKNOWN.
 - Redis rate limit peer + token, fail closed nếu Redis lỗi. Không tin header IP do client tự gửi. Anonymous BFF không chuyển cookie/Authorization nội bộ. Header no-store/no-referrer/noindex cả trang và API.
 - Migration additive `0008`, không đổi migration 0001–0007. Link legacy thiếu attempt binding giữ nguyên dữ liệu nhưng không hợp lệ; không tự gán lượt đoán.
