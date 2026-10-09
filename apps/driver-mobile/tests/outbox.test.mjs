@@ -8,6 +8,29 @@ import { unlinkSync } from 'node:fs';
 import { Outbox } from '../src/offline/outbox.ts';
 
 const command = (id, resource='trip') => ({client_action_id:id, occurred_at:'2026-10-07T07:00:00Z', action:{kind:'START_TRIP',resource_id:resource}});
+test('POD upload precedes DELIVERED after offline restart; lost response replays exact image ID', async()=> {
+  const filename=join(tmpdir(),`fleet-m5-${randomUUID()}.db`);
+  const db=database(filename);const store=new Outbox(db,'driver');await store.init();
+  const photo={client_action_id:'photo',occurred_at:'2026-10-08T07:00:00Z',action:{kind:'POD_UPLOAD',resource_id:'delivery',data:{client_action_id:'photo',trip_stop_id:'attempt',sha256:'immutable'}}};
+  const delivered={client_action_id:'done',occurred_at:'2026-10-08T07:01:00Z',action:{kind:'STATUS',resource_id:'delivery',data:{from_status:'DELIVERING',to_status:'DELIVERED'}}};
+  await store.enqueue(photo);await store.enqueue(delivered);db.native.close();
+  const reopened=database(filename);const restored=new Outbox(reopened,'driver');await restored.init();
+  const tries=[];await restored.sync(async x=>{tries.push(x);throw Error('lost upload response');},()=>{});
+  assert.deepEqual(tries,[photo]);assert.equal((await restored.list())[1].state,'WAITING');
+  const sent=[];await restored.sync(async x=>{sent.push(x);return {ok:true,retryable:false};},()=>{});
+  assert.deepEqual(sent,[photo,delivered]);assert.equal((await restored.list()).filter(x=>x.state==='SYNCED').length,2);
+  reopened.native.close();unlinkSync(filename);
+});
+test('POD conflict pauses same delivery completion but allows another delivery upload',async()=> {
+  const db=database();const store=new Outbox(db,'driver');await store.init();
+  const photo={...command('photo'),action:{kind:'POD_UPLOAD',resource_id:'a',data:{trip_stop_id:'old-attempt'}}};
+  const done={...command('done'),action:{kind:'STATUS',resource_id:'a',data:{to_status:'DELIVERED'}}};
+  const other={...command('other'),action:{kind:'POD_UPLOAD',resource_id:'b',data:{trip_stop_id:'current'}}};
+  await store.enqueue(photo);await store.enqueue(done);await store.enqueue(other);
+  const sent=[];await store.sync(async x=>{sent.push(x.client_action_id);return {ok:x.client_action_id!=='photo',retryable:false,conflict:x.client_action_id==='photo'};},()=>{});
+  assert.deepEqual(sent,['photo','other']);assert.equal((await store.list())[1].state,'WAITING');assert.deepEqual((await store.list())[0].command,photo);
+  db.native.close();
+});
 function database(filename=':memory:') {
   const native = new DatabaseSync(filename);
   return { native, execAsync:async sql=>native.exec(sql), runAsync:async(sql,...args)=>native.prepare(sql).run(...args), getFirstAsync:async(sql,...args)=>native.prepare(sql).get(...args) ?? null };

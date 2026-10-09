@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     s3_access_key: SecretStr = SecretStr("")
     s3_secret_key: SecretStr = SecretStr("")
     s3_bucket: str = "fleet-pod"
+    s3_public_endpoint_url: str = ""
+    pod_read_url_seconds: int = Field(default=60, ge=1, le=300)
+    pod_max_bytes: int = Field(default=20 * 1024 * 1024, ge=1024)
+    pod_max_pixels: int = Field(default=40_000_000, ge=1)
     traccar_url: str = "http://localhost:8082"
     traccar_email: str = ""
     traccar_password: SecretStr = SecretStr("")

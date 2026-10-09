@@ -4,6 +4,8 @@ M0 đã hoàn tất với accepted risk có điều kiện. M1 bổ sung đăng 
 
 ## Chạy môi trường local
 
+Theo **DEC-041**, canonical development runtime là **`fleet-delivery-dev`**, tên mặc định trong `compose.yaml` và tên được `scripts/dev.ps1` chọn rõ. Reuse database/volumes này cho các milestone tiếp theo, chỉ migrate tiến lên; không thay bằng stack test. Stack **`fleet-delivery` cũ head 0005** là **PRESERVED/LEGACY**, giữ nguyên containers/runtime/volumes, không migrate/reset/prune/xóa/ghi đè và không coi là production data. Không chạy lệnh dev vào project legacy. Test cô lập dùng project/DB riêng và chỉ cleanup tài nguyên của test đó.
+
 Yêu cầu Docker Desktop với Linux Engine đang hoạt động và Python launcher có module `uv`. Từ thư mục dự án, chạy PowerShell:
 
 ```powershell
@@ -24,9 +26,9 @@ Các cổng Docker chỉ bind loopback. Đây là cấu hình dev; chưa dùng c
 MinIO và mc build từ source chính thức đã cố định release/SHA vì các image public được kiểm tra không tải được. Lần build đầu có thể lâu do tải Go modules. Build Go giới hạn hai tác vụ và dùng cache; script build tuần tự để phù hợp máy có ít RAM. Kết quả xác minh thực tế được ghi trong `docs/reports/M0_FINAL.md`.
 
 ```powershell
-docker compose ps
-docker compose logs --tail 100 api
-docker compose stop
+docker compose --project-name fleet-delivery-dev ps
+docker compose --project-name fleet-delivery-dev logs --tail 100 api
+docker compose --project-name fleet-delivery-dev stop
 ```
 
 ## Chạy mã nguồn ngoài Docker

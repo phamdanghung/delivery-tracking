@@ -228,7 +228,7 @@ def edit_delivery(
 
 
 def uploaded_pod(db: Connection, delivery_id: UUID) -> bool:
-    # Metadata alone is insufficient: a private object must actually exist (M5 upload deferred).
+    # DEC-039: only verified storage evidence of the current attempt can open DELIVERED.
     import boto3
     from botocore.config import Config
     from botocore.exceptions import BotoCoreError, ClientError
@@ -242,15 +242,28 @@ def uploaded_pod(db: Connection, delivery_id: UUID) -> bool:
         config=Config(connect_timeout=5, read_timeout=5, retries={"max_attempts": 1}),
     )
     rows = db.execute(
-        text("""SELECT object_key,sha256 FROM pod_photos
-        WHERE delivery_id=:id AND uploaded_at IS NOT NULL AND sha256 IS NOT NULL"""),
+        text("""SELECT p.object_key,p.sha256,p.object_version,p.size_bytes FROM pod_photos p
+        JOIN trip_stops s ON s.id=p.trip_stop_id
+        WHERE p.delivery_id=:id AND s.delivery_id=:id
+        AND s.trip_id=(SELECT t.id FROM trip_stops current_stop
+          JOIN trips t ON t.id=current_stop.trip_id WHERE current_stop.delivery_id=:id
+          ORDER BY t.created_at DESC,t.id DESC LIMIT 1)
+        AND p.uploaded_at IS NOT NULL AND p.sha256 IS NOT NULL
+        AND p.object_version IS NOT NULL AND p.size_bytes > 0"""),
         {"id": delivery_id},
     ).mappings()
     try:
         for row in rows:
             try:
-                info = client.head_object(Bucket=settings.s3_bucket, Key=row["object_key"])
-                if info.get("ContentLength", 0) > 0:
+                info = client.head_object(
+                    Bucket=settings.s3_bucket,
+                    Key=row["object_key"],
+                    VersionId=row["object_version"],
+                )
+                if (
+                    info.get("ContentLength") == row["size_bytes"]
+                    and info.get("Metadata", {}).get("sha256") == row["sha256"]
+                ):
                     return True
             except ClientError as exc:
                 if exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode") == 404:
@@ -283,7 +296,7 @@ def change_status(
         if trip != "ACTIVE":
             raise HTTPException(409, "Chuyến chưa được duyệt/bắt đầu")
     if data.to_status == "DELIVERED" and not uploaded_pod(db, delivery_id):
-        raise HTTPException(409, "Cần ít nhất một ảnh POD đã upload hợp lệ; upload thuộc M5")
+        raise HTTPException(409, "Cần ít nhất một ảnh POD hợp lệ của lượt giao hiện tại đã upload")
     event(
         db,
         request,

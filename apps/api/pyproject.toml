@@ -16,6 +16,7 @@ dependencies = [
   "argon2-cffi>=25,<26",
   "websockets>=17,<18",
   "ortools>=9.14,<10",
+  "pillow>=12.3,<13",
 ]
 
 [dependency-groups]

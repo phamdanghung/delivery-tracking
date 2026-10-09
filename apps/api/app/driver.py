@@ -24,6 +24,8 @@ from app.delivery_schemas import (
     TripOut,
 )
 from app.geofence import ArrivalCorrection, correct_arrival
+from app.pod_metadata import PodMetadata
+from app.pod_schemas import PodPhotoOut
 from app.schemas import Input
 
 router = APIRouter(prefix="/api/v1/driver", tags=["driver-offline"])
@@ -52,8 +54,15 @@ class CorrectionAction(Input):
     data: ArrivalCorrection
 
 
+class PodAction(Input):
+    kind: Literal["POD_UPLOAD"]
+    resource_id: UUID
+    data: PodMetadata
+
+
 Action = Annotated[
-    StartAction | StatusAction | RescheduleAction | CorrectionAction, Field(discriminator="kind")
+    StartAction | StatusAction | RescheduleAction | CorrectionAction | PodAction,
+    Field(discriminator="kind"),
 ]
 
 
@@ -67,6 +76,11 @@ class OfflineCommand(Input):
     def aware(self) -> "OfflineCommand":
         if self.occurred_at.tzinfo is None:
             raise ValueError("Thời điểm thao tác cần timezone")
+        if (
+            isinstance(self.action, PodAction)
+            and self.action.data.client_action_id != self.client_action_id
+        ):
+            raise ValueError("POD phải giữ cùng client_action_id của command")
         return self
 
 
@@ -319,7 +333,7 @@ def today(user: User, db: Db) -> dict[str, Any]:
     return {"trips": trips, "deliveries": details, "route_stops": route_stops, "gps": gps}
 
 
-@router.post("/actions", response_model=TripOut | DeliveryOut | RescheduleOut)
+@router.post("/actions", response_model=TripOut | DeliveryOut | RescheduleOut | PodPhotoOut)
 def offline_action(command: OfflineCommand, user: User, request: Request, db: Db) -> JSONResponse:
     if user.role != "DRIVER":
         raise HTTPException(403, "Chỉ tài xế được đồng bộ thao tác offline")
@@ -377,6 +391,10 @@ def offline_action(command: OfflineCommand, user: User, request: Request, db: Db
                 result = change_status(action.resource_id, action.data, user, request, db)
             elif isinstance(action, CorrectionAction):
                 result = correct_arrival(action.resource_id, action.data, user, request, db)
+            elif isinstance(action, PodAction):
+                from app.pod import acknowledge_photo
+
+                result = acknowledge_photo(action.resource_id, action.data, user, db)
             else:
                 result = reschedule(action.resource_id, action.data, user, request, db)
             body = jsonable_encoder(result)

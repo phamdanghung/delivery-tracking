@@ -3,6 +3,7 @@ import { useLocalSearchParams } from "expo-router";
 import * as Linking from "expo-linking";
 import { Text } from "react-native";
 import { useDriver } from "../../driver/context";
+import { PhotoCapture } from "../../pod/PhotoCapture";
 import { Button, Card, Field, Login, Navigation, Page, commitment, projected, statusLabel, styles, time } from "../../driver/ui";
 export default function StopDetail() {
   const { id } = useLocalSearchParams<{ id: string }>(); const state = useDriver();
@@ -13,7 +14,7 @@ export default function StopDetail() {
   const cache = projected(state.cache, state.queue); const detail = cache?.deliveries[id];
   if (!detail) return <Page title="Điểm giao"><Text style={styles.body}>Chưa tải điểm giao hoặc không còn quyền truy cập.</Text></Page>;
   const d = detail.delivery;
-  const trip = cache?.trips.find((x) => x.stops.some((stop) => stop.delivery_id === id));
+  const trip = cache?.trips.find((x) => d.trip_id ? x.id === d.trip_id : x.status === "ACTIVE" && x.stops.some((stop) => stop.delivery_id === id));
   const arrival = [...detail.events].reverse().find((x) => x.to_status === "ARRIVED");
   const submit = async (kind: "STATUS" | "CORRECT_ARRIVED" | "PROPOSE_RESCHEDULE", data: unknown) => {
     if (saving) return; setSaving(true); setError("");
@@ -31,7 +32,7 @@ export default function StopDetail() {
       <Text style={styles.body}>Sửa Đã đến nhận sai sẽ được ghi nhật ký và đưa điểm về Đang đi giao.</Text><Field label="Lý do sửa / giao thất bại *" value={reason} onChange={setReason}/>
       <Button title="Xác nhận sửa Đã đến" disabled={saving || !reason.trim() || !arrival} onPress={() => { void submit("CORRECT_ARRIVED", { arrival_event_id: arrival?.id, reason }); }}/>
     </>}
-    {trip?.status === "ACTIVE" && d.status === "DELIVERING" && <><Text style={styles.body}>Cần ảnh bằng chứng hợp lệ để hoàn tất giao hàng.</Text><Button title="Giao thành công" onPress={() => {}} disabled/><Field label="Lý do giao thất bại *" value={reason} onChange={setReason}/></>}
+    {trip?.status === "ACTIVE" && d.status === "DELIVERING" && <><PhotoCapture delivery={id} stop={trip.stops.find((stop) => stop.delivery_id === id)!.id}/><Field label="Lý do giao thất bại *" value={reason} onChange={setReason}/></>}
     {trip?.status === "ACTIVE" && ["ARRIVED", "DELIVERING"].includes(d.status) && <Button title="Xác nhận giao không thành công" danger disabled={saving || !reason.trim()} onPress={() => { void submit("STATUS", { from_status: d.status, to_status: "FAILED", reason }); }}/>} 
     {d.status === "FAILED" && <>
       <Text style={styles.cardTitle}>Đề xuất giao lại</Text><Text style={styles.body}>Lịch mới chỉ có hiệu lực sau khi điều phối xác nhận.</Text>

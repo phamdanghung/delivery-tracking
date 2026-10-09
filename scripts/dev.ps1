@@ -30,18 +30,19 @@ foreach ($m3ConfigLine in @('OSRM_URL=http://127.0.0.1:5000', 'OSRM_METADATA_PAT
 }
 [IO.File]::WriteAllText((Join-Path $projectRoot '.env'), $m3LocalEnv)
 foreach ($service in @('minio', 'minio-init', 'api', 'admin-web')) {
-    docker compose build $service
+    docker compose --project-name fleet-delivery-dev build $service
     if ($LASTEXITCODE -ne 0) { throw "Docker image build failed: $service" }
 }
-docker compose up -d --wait --wait-timeout 300 postgres redis minio-init traccar
+docker compose --project-name fleet-delivery-dev up -d --wait --wait-timeout 300 postgres redis minio-init traccar
 if ($LASTEXITCODE -ne 0) { throw 'Docker dependencies failed.' }
-docker compose run --rm --no-deps api alembic upgrade head
+docker compose --project-name fleet-delivery-dev run --rm --no-deps api alembic upgrade head
 if ($LASTEXITCODE -ne 0) { throw 'Database migration failed.' }
 Push-Location -LiteralPath 'apps/api'
 try {
     python -m uv run --project . --frozen ../../scripts/bootstrap_m1.py
     if ($LASTEXITCODE -ne 0) { throw 'M1 account bootstrap failed; existing accounts were not reset.' }
 } finally { Pop-Location }
-docker compose up -d --wait --wait-timeout 300
-if ($LASTEXITCODE -ne 0) { throw 'Docker stack failed. Check docker compose logs.' }
+docker compose --project-name fleet-delivery-dev up -d --wait --wait-timeout 300
+if ($LASTEXITCODE -ne 0) { throw 'Docker stack failed. Check docker compose --project-name fleet-delivery-dev logs.' }
 Write-Host 'Web: http://localhost:3000 | API: http://localhost:8000/docs'
+
