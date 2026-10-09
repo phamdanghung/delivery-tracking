@@ -16,4 +16,4 @@ Branch `codex/m5-e-pod`, base M4 merge `32cd5872507dd3f9a56a059c2c0ff7086e87e8eb
 2. DEC-038: CAMERA_CAPTURED/ALBUM_SELECTED; metadata nghiệp vụ từ app/server, không tin EXIF time/GPS. Bỏ EXIF không cần thiết nhưng giữ orientation/rendering và audit nguồn ảnh.
 3. DEC-039: POD gắn trip stop/lượt giao hiện tại; lượt mới sau reschedule cần POD mới; giữ POD cũ để truy vết.
 
-Triển khai tiếp từ nền tảng kiểm tra ảnh và object immutable hiện có, không làm lại M4. DEC-035 chỉ áp dụng M4; không tự mở rộng accepted risk sang M5. Khi chốt milestone kiểm tra audit/runtime surface hiện tại và báo mọi advisory chưa được xử lý.
+Triển khai tiếp từ nền tảng kiểm tra ảnh và object immutable hiện có, không làm lại M4. **DEC-040** phê duyệt riêng hai advisory tooling cho M5 development/local/CI; giữ audit/runtime gates và đầy đủ điều kiện/review deadline, không áp dụng production. **DEC-041** chọn **fleet-delivery-dev** làm canonical development runtime, reuse volumes và chỉ migrate tiến lên ở milestone sau; fleet-delivery head 0005 giữ PRESERVED/LEGACY. Không merge PR #4, không chuyển M6.
