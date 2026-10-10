@@ -4,7 +4,7 @@ import { sameOrigin } from "../origin";
 
 const api = process.env.API_URL || "http://127.0.0.1:8000";
 const routes =
-  /^(auth\/(login|logout|me)|tracking-links(?:\/[0-9a-f-]+\/revoke)?|users(?:\/[0-9a-f-]+)?|vehicles(?:\/[0-9a-f-]+(?:\/(live|history|odometer))?)?|drivers(?:\/[0-9a-f-]+)?|gps\/devices|routing\/config|deliveries(?:\/[0-9a-f-]+(?:\/(status|reschedule|arrival-correction))?)?|trips(?:\/(config|[0-9a-f-]+(?:\/(optimize|optimization|approve))?))?)$/;
+  /^(auth\/(login|logout|me)|tracking-links(?:\/[0-9a-f-]+\/revoke)?|users(?:\/[0-9a-f-]+)?|vehicles(?:\/[0-9a-f-]+(?:\/(live|history|odometer))?)?|drivers(?:\/[0-9a-f-]+)?|gps\/devices|routing\/config|deliveries(?:\/[0-9a-f-]+(?:\/(status|reschedule|arrival-correction|pod\/photos(?:\/[0-9a-f-]+\/url)?))?)?|trips(?:\/(config|[0-9a-f-]+(?:\/(optimize|optimization|approve))?))?)$/;
 type Tokens = {
   access_token: string;
   refresh_token: string;
@@ -37,7 +37,7 @@ async function handle(
   context: { params: Promise<{ path: string[] }> },
 ) {
   const route = (await context.params).path.join("/");
-  if (!routes.test(route))
+  if (!routes.test(route) || (route.includes("/pod/") && request.method !== "GET"))
     return NextResponse.json({ detail: "Không tìm thấy API" }, { status: 404 });
   if (
     request.method !== "GET" &&

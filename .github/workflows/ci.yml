@@ -19,7 +19,7 @@ jobs:
       - run: node scripts/verify_web_surface.mjs
       - run: npm run build:mobile
       - run: node scripts/verify_mobile_surface.mjs
-      - name: M6 full security audit (M5 acceptance is not inherited)
+      - name: M6 raw security audit (DEC-046 accepted risk, findings retained)
         run: npm audit
   backend:
     runs-on: ubuntu-latest

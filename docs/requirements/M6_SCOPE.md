@@ -14,7 +14,7 @@ Branch `codex/m6-customer-tracking-eta`, base M5 merge `a6438c903b4eae278a4bc99b
 
 Áp dụng DEC-042/043/044/045: token theo lượt giao, cấp/thu hồi từng link, privacy sau giao và ETA từ GPS fresh + OSRM + tuyến đã duyệt. Không bổ sung endpoint quản lý ngoài create/revoke đã được duyệt.
 
-DEC-040 accepted risk chỉ cho M5, chưa mở rộng M6. Không tự chấp nhận advisory M6; audit/runtime gates vẫn bắt buộc khi chốt. Không chuyển M7.
+DEC-046 accepted risk riêng cho M6 development/local/CI; không production hoặc coi đã vá. Raw audit/runtime gates vẫn giữ. Đóng M6 còn yêu cầu sửa BFF POD và làm rõ solver discrepancy theo chỉ thị chủ dự án. Không chuyển M7.
 
 ## Contract và triển khai
 

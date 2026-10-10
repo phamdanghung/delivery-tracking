@@ -413,6 +413,15 @@ Theo dõi:
 - Privacy: public endpoint chỉ DTO tối thiểu theo đúng delivery attempt/token; không GPS history, stop/đơn/khách khác hoặc dữ liệu nội bộ fleet.
 - Ghi chú: không thay state machine/optimization; quyết định này không phải phê duyệt accepted risk cho M6.
 
+### DEC-046 — Accepted Risk cho M6
+- Ngày chốt: 10/10/2026.
+- Milestone liên quan: M6 development/local/CI.
+- Quyết định: chủ dự án chấp nhận tạm thời `braces GHSA-vfj7-8cjw-p6xm` và `node-forge GHSA-86w9-cpqp-85rv`; không production, không coi advisory đã được vá hoặc miễn trừ kiểm soát khác.
+- Điều kiện: chỉ repo/config/cert tin cậy; Metro/Compose expose phạm vi cần thiết/loopback; không `npm audit fix --force`, không downgrade Expo/React Native để audit về 0, không suppress/ẩn advisory. Giữ raw npm audit và runtime-surface gates trong CI/report.
+- Theo dõi: review muộn nhất **02/11/2026** hoặc trước production, mốc nào đến trước. Upstream có patch hoặc advisory vào runtime attack surface phải đánh giá lại ngay.
+- Điều kiện đóng M6: sửa regression Web POD/BFF và chứng minh nguyên nhân solver local không phải regression logic; CI đạt ngoài raw audit được quyết định này bao phủ; không còn blocker khác.
+- Ghi chú: không sửa DEC accepted-risk cũ; không merge PR #5, không chuyển M7.
+
 ## 14. Milestone boundaries
 
 ### M0
