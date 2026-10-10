@@ -12,7 +12,7 @@ Branch `codex/m6-customer-tracking-eta`, base M5 merge `a6438c903b4eae278a4bc99b
 
 ## Quyết định đã chốt
 
-Áp dụng DEC-042/043/044: token theo lượt giao, cấp/thu hồi từng link, privacy sau giao và ETA từ GPS fresh + OSRM + tuyến đã duyệt. Không bổ sung endpoint quản lý ngoài create/revoke đã được duyệt.
+Áp dụng DEC-042/043/044/045: token theo lượt giao, cấp/thu hồi từng link, privacy sau giao và ETA từ GPS fresh + OSRM + tuyến đã duyệt. Không bổ sung endpoint quản lý ngoài create/revoke đã được duyệt.
 
 DEC-040 accepted risk chỉ cho M5, chưa mở rộng M6. Không tự chấp nhận advisory M6; audit/runtime gates vẫn bắt buộc khi chốt. Không chuyển M7.
 
@@ -27,3 +27,5 @@ DEC-040 accepted risk chỉ cho M5, chưa mở rộng M6. Không tự chấp nh�
 - Redis rate limit peer + token, fail closed nếu Redis lỗi. Không tin header IP do client tự gửi. Anonymous BFF không chuyển cookie/Authorization nội bộ. Header no-store/no-referrer/noindex cả trang và API.
 - Migration additive `0008`, không đổi migration 0001–0007. Link legacy thiếu attempt binding giữ nguyên dữ liệu nhưng không hợp lệ; không tự gán lượt đoán.
 - UI tạo/copy nhiều link và thu hồi từng link vừa tạo hoặc theo ID đã lưu, không endpoint lấy lại plaintext. Route public `/t/{trackingToken}` không có navigation nội bộ.
+
+Theo DEC-045, trước mỗi ETA/cache phải đối chiếu toàn bộ stop/sequence và tọa độ/thời gian hẹn hiện hành với snapshot đã duyệt. Sai khác trả UNKNOWN; xác minh OSRM thật kể cả cache còn hạn. DELIVERED không truy vấn GPS hay tính ETA. Không đổi API/state machine.

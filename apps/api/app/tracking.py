@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, ConfigDict
 from redis import Redis
 from redis.exceptions import RedisError
@@ -155,9 +156,12 @@ def estimated_arrival(
         return None
     stops = (
         db.execute(
-            text("""SELECT s.id,s.sequence_no,s.status FROM trip_stops s
-        WHERE trip_id=:trip AND sequence_no<=:sequence AND
-        status NOT IN ('DELIVERED','FAILED','CANCELLED') ORDER BY sequence_no"""),
+            text("""SELECT s.id,s.sequence_no,s.status,s.delivery_id,
+        d.scheduled_date,d.commitment_type,d.appointment_at,d.window_start,d.window_end,
+        d.deadline_at,ST_Y(d.location::geometry) AS latitude,
+        ST_X(d.location::geometry) AS longitude FROM trip_stops s
+        JOIN deliveries d ON d.id=s.delivery_id
+        WHERE s.trip_id=:trip ORDER BY s.sequence_no"""),
             {"trip": row["trip_id"], "sequence": row["sequence_no"]},
         )
         .mappings()
@@ -165,31 +169,68 @@ def estimated_arrival(
     )
     plan = (
         db.execute(
-            text("""SELECT id,result_json FROM trip_route_plans WHERE trip_id=:trip
+            text("""SELECT id,input_json,result_json FROM trip_route_plans WHERE trip_id=:trip
         AND approved_at IS NOT NULL ORDER BY approved_at DESC LIMIT 1"""),
             {"trip": row["trip_id"]},
         )
         .mappings()
         .first()
     )
-    if not plan or not stops or stops[-1]["id"] != row["trip_stop_id"]:
+    if not plan or not stops:
         return None
-    key_data = [
-        str(plan["id"]),
-        gps.model_dump(mode="json"),
-        [(str(s["id"]), s["status"]) for s in stops],
-    ]
-    key = "tracking:eta:" + hashlib.sha256(json.dumps(key_data).encode()).hexdigest()
     try:
-        cached = redis.get(key)
-        if cached:
-            return datetime.fromisoformat(str(cached))
-        approved = {s["stop_id"]: s for s in plan["result_json"]["stops"]}
-        details = [approved[str(s["id"])] for s in stops]
+        approved_list = plan["result_json"]["stops"]
+        original = {s["stop_id"]: s for s in plan["input_json"]["source"]["stops"]}
+        fields = (
+            "delivery_id",
+            "scheduled_date",
+            "commitment_type",
+            "appointment_at",
+            "window_start",
+            "window_end",
+            "deadline_at",
+            "latitude",
+            "longitude",
+        )
+        if len(stops) != len(approved_list):
+            return None
+        for current, approved_stop in zip(stops, approved_list, strict=True):
+            if (
+                str(current["id"]) != approved_stop["stop_id"]
+                or current["sequence_no"] != approved_stop["sequence_no"]
+                or jsonable_encoder({field: current[field] for field in fields})
+                != {field: original[str(current["id"])][field] for field in fields}
+            ):
+                return None
+        remaining = [
+            s
+            for s in stops
+            if s["sequence_no"] <= row["sequence_no"]
+            and s["status"] not in {"DELIVERED", "FAILED", "CANCELLED"}
+        ]
+        if not remaining or remaining[-1]["id"] != row["trip_stop_id"]:
+            return None
+        approved = {s["stop_id"]: s for s in approved_list}
+        details = [approved[str(s["id"])] for s in remaining]
         points = [(gps.latitude, gps.longitude)] + [
             (s["latitude"], s["longitude"]) for s in details
         ]
-        matrix = RoutingProvider(get_settings()).matrix(points)
+        provider = RoutingProvider(get_settings())
+        # Validate live routing even with a warm ETA cache; never mask an OSRM outage.
+        matrix = provider.matrix(points)
+        key_data = [
+            str(plan["id"]),
+            provider.url,
+            provider.dataset(),
+            gps.model_dump(mode="json"),
+            [(str(s["id"]), s["status"]) for s in remaining],
+        ]
+        key = "tracking:eta:" + hashlib.sha256(json.dumps(key_data).encode()).hexdigest()
+        cached = redis.get(key)
+        if cached:
+            value = datetime.fromisoformat(str(cached))
+            if value >= now:
+                return value
         arrival = now
         for index, detail in enumerate(details):
             duration = matrix.durations_s[index][index + 1]

@@ -237,6 +237,7 @@ def test_osrm_unavailable_real_failure_no_fallback(context, monkeypatch):
     trip = started(context)
     token = raw(link(context, trip["stops"][0]))
     snapshot(context, trip)
+    assert public(context, token).json()["eta_status"] == "AVAILABLE"
     monkeypatch.setenv("OSRM_URL", "http://127.0.0.1:1")
     get_settings.cache_clear()
     response = public(context, token)
@@ -372,3 +373,36 @@ def test_failed_revokes_and_assignment_changes_cannot_follow_new_attempt(context
     with context[1].begin() as db:
         db.execute(text("UPDATE trips SET vehicle_id=NULL WHERE id=:id"), {"id": trip["id"]})
     assert public(context, old).status_code == 410
+
+
+@pytest.mark.parametrize("change", ["coordinates", "appointment", "sequence"])
+def test_changed_current_route_never_reuses_warm_eta(context, change):
+    trip = started(context)
+    token = raw(link(context, trip["stops"][0]))
+    snapshot(context, trip)
+    assert public(context, token).json()["eta_status"] == "AVAILABLE"
+    with context[1].begin() as db:
+        if change == "sequence":
+            db.execute(
+                text("UPDATE trip_stops SET sequence_no=-sequence_no WHERE trip_id=:id"),
+                {"id": trip["id"]},
+            )
+        elif change == "coordinates":
+            db.execute(
+                text(
+                    "UPDATE deliveries SET location="
+                    "ST_SetSRID(ST_MakePoint(106.8,10.8),4326)::geography WHERE id=:id"
+                ),
+                {"id": trip["stops"][0]["delivery_id"]},
+            )
+        else:
+            db.execute(
+                text(
+                    "UPDATE deliveries SET appointment_at=COALESCE(appointment_at,now())"
+                    " + interval '1 hour' WHERE id=:id"
+                ),
+                {"id": trip["stops"][0]["delivery_id"]},
+            )
+    dto = public(context, token).json()
+    assert dto["gps"]["freshness"] == "NORMAL"
+    assert dto["eta_at"] is None and dto["eta_status"] == "UNKNOWN"

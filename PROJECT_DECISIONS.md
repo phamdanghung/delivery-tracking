@@ -404,6 +404,15 @@ Theo dõi:
 - Quyết định: trong 1 giờ sau DELIVERED chỉ trả trạng thái hoàn tất và thời điểm giao; ẩn GPS/ETA live. Khi đang giao, ETA dùng GPS fresh, OSRM self-host và các điểm còn lại/service time của tuyến đã duyệt. GPS/OSRM lỗi thì ETA chưa xác định, không giả vị trí hoặc ETA.
 - Ghi chú: public DTO không trả toàn tuyến, khách/đơn/xe khác hoặc dữ liệu nội bộ; không đổi OR-Tools M3.
 
+### DEC-045 — Chi tiết privacy sau DELIVERED và độ tin cậy ETA M6
+- Ngày chốt: 10/10/2026.
+- Milestone liên quan: M6; bổ sung DEC-044, giữ nguyên lịch sử các DEC cũ.
+- Sau DELIVERED: link còn hiệu lực đúng 1 giờ theo DEC-042; chỉ trạng thái Đã giao, thời điểm giao và thông tin hoàn tất tối thiểu. Không GPS live/vị trí hiện tại/hướng/tốc độ/ETA live; không tính ETA mới, không hiển thị ETA cũ.
+- Khi đang giao: ETA từ GPS fresh hiện tại, OSRM self-host, các stop còn lại/service time của tuyến đã duyệt và dữ liệu route/sequence hiện hành. Không tọa độ giả, không khoảng cách đường chim bay.
+- GPS STALE/LOST/invalid, OSRM không khả dụng hoặc dữ liệu tuyến không đủ tin cậy: hiển thị “ETA chưa xác định”; không giờ dự kiến giả, không dùng ETA cũ như thể còn chính xác. Cache không được che lỗi provider hoặc dữ liệu tuyến đã thay đổi.
+- Privacy: public endpoint chỉ DTO tối thiểu theo đúng delivery attempt/token; không GPS history, stop/đơn/khách khác hoặc dữ liệu nội bộ fleet.
+- Ghi chú: không thay state machine/optimization; quyết định này không phải phê duyệt accepted risk cho M6.
+
 ## 14. Milestone boundaries
 
 ### M0
