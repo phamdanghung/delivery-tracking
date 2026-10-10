@@ -386,6 +386,42 @@ Theo dõi:
 - Xác minh M5: PostgreSQL/PostGIS/Redis/Traccar/OSRM healthy, head 0007; MinIO private/versioning; API live/ready/admin-web; bootstrap/login/list rỗng PASS, không dữ liệu nghiệp vụ giả.
 - Ghi chú: thay lựa chọn runtime development, không đổi nghiệp vụ/kiến trúc/contract; chưa cho phép triển khai M6 hoặc merge PR #4.
 
+### DEC-042 — Lifecycle tracking theo lượt giao M6
+- Ngày chốt: 09/10/2026.
+- Milestone liên quan: M6.
+- Quyết định: chỉ tạo link khi EN_ROUTE/ARRIVED/DELIVERING. Link gắn lượt giao hiện tại; trước DELIVERED expires_at chưa có mốc. DELIVERED đặt hết hạn đúng +1 giờ. FAILED/CANCELLED/RESCHEDULED hoặc đổi lượt giao làm link cũ hết hiệu lực; lượt mới cần link mới.
+- Ghi chú: không thay state machine; không cho token cũ theo dõi lượt/xe khác.
+
+### DEC-043 — Cấp và thu hồi từng tracking link M6
+- Ngày chốt: 09/10/2026.
+- Milestone liên quan: M6.
+- Quyết định: ADMIN/DISPATCHER tạo và thu hồi link; plaintext chỉ trả lúc tạo, DB chỉ giữ hash. Nhiều link cùng lượt được phép; tạo mới không tự thu hồi link cũ. Thu hồi từng link qua POST /tracking-links/{id}/revoke, ghi audit. Nhân viên tự gửi qua Zalo.
+- Ghi chú: không khôi phục plaintext từ DB, không tự gửi SMS/ZNS.
+
+### DEC-044 — Privacy sau giao và ETA M6
+- Ngày chốt: 09/10/2026.
+- Milestone liên quan: M6.
+- Quyết định: trong 1 giờ sau DELIVERED chỉ trả trạng thái hoàn tất và thời điểm giao; ẩn GPS/ETA live. Khi đang giao, ETA dùng GPS fresh, OSRM self-host và các điểm còn lại/service time của tuyến đã duyệt. GPS/OSRM lỗi thì ETA chưa xác định, không giả vị trí hoặc ETA.
+- Ghi chú: public DTO không trả toàn tuyến, khách/đơn/xe khác hoặc dữ liệu nội bộ; không đổi OR-Tools M3.
+
+### DEC-045 — Chi tiết privacy sau DELIVERED và độ tin cậy ETA M6
+- Ngày chốt: 10/10/2026.
+- Milestone liên quan: M6; bổ sung DEC-044, giữ nguyên lịch sử các DEC cũ.
+- Sau DELIVERED: link còn hiệu lực đúng 1 giờ theo DEC-042; chỉ trạng thái Đã giao, thời điểm giao và thông tin hoàn tất tối thiểu. Không GPS live/vị trí hiện tại/hướng/tốc độ/ETA live; không tính ETA mới, không hiển thị ETA cũ.
+- Khi đang giao: ETA từ GPS fresh hiện tại, OSRM self-host, các stop còn lại/service time của tuyến đã duyệt và dữ liệu route/sequence hiện hành. Không tọa độ giả, không khoảng cách đường chim bay.
+- GPS STALE/LOST/invalid, OSRM không khả dụng hoặc dữ liệu tuyến không đủ tin cậy: hiển thị “ETA chưa xác định”; không giờ dự kiến giả, không dùng ETA cũ như thể còn chính xác. Cache không được che lỗi provider hoặc dữ liệu tuyến đã thay đổi.
+- Privacy: public endpoint chỉ DTO tối thiểu theo đúng delivery attempt/token; không GPS history, stop/đơn/khách khác hoặc dữ liệu nội bộ fleet.
+- Ghi chú: không thay state machine/optimization; quyết định này không phải phê duyệt accepted risk cho M6.
+
+### DEC-046 — Accepted Risk cho M6
+- Ngày chốt: 10/10/2026.
+- Milestone liên quan: M6 development/local/CI.
+- Quyết định: chủ dự án chấp nhận tạm thời `braces GHSA-vfj7-8cjw-p6xm` và `node-forge GHSA-86w9-cpqp-85rv`; không production, không coi advisory đã được vá hoặc miễn trừ kiểm soát khác.
+- Điều kiện: chỉ repo/config/cert tin cậy; Metro/Compose expose phạm vi cần thiết/loopback; không `npm audit fix --force`, không downgrade Expo/React Native để audit về 0, không suppress/ẩn advisory. Giữ raw npm audit và runtime-surface gates trong CI/report.
+- Theo dõi: review muộn nhất **02/11/2026** hoặc trước production, mốc nào đến trước. Upstream có patch hoặc advisory vào runtime attack surface phải đánh giá lại ngay.
+- Điều kiện đóng M6: sửa regression Web POD/BFF và chứng minh nguyên nhân solver local không phải regression logic; CI đạt ngoài raw audit được quyết định này bao phủ; không còn blocker khác.
+- Ghi chú: không sửa DEC accepted-risk cũ; không merge PR #5, không chuyển M7.
+
 ## 14. Milestone boundaries
 
 ### M0

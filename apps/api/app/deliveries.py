@@ -25,6 +25,7 @@ from app.delivery_schemas import (
     TripOut,
 )
 from app.schemas import UserOut
+from app.tracking_lifecycle import transition as tracking_transition
 
 router = APIRouter(prefix="/api/v1", tags=["delivery-trip"])
 LOCAL = ZoneInfo("Asia/Bangkok")
@@ -106,6 +107,7 @@ def event(
         updated_at=now() WHERE id=:id"""),
         {"new": new, "id": identifier},
     )
+    tracking_transition(db, request, user.id, identifier, new)
 
 
 def public(value: Any) -> Any:

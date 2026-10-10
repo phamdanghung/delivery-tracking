@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_ignore_empty=True)
     app_env: Literal["local", "test", "staging", "production"] = "local"
     database_url: SecretStr = SecretStr("")
-    redis_url: SecretStr = SecretStr("redis://localhost:6379/0")
+    redis_url: SecretStr = SecretStr("redis://127.0.0.1:6379/0")
     s3_endpoint_url: str = "http://localhost:9000"
     s3_access_key: SecretStr = SecretStr("")
     s3_secret_key: SecretStr = SecretStr("")
@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     jwt_access_seconds: int = 900
     jwt_refresh_seconds: int = 604800
     gps_poll_seconds: int = 5
+    tracking_public_base_url: str = "http://localhost:3000"
+    tracking_token_requests_per_minute: int = Field(default=60, ge=1)
+    tracking_peer_requests_per_minute: int = Field(default=600, ge=1)
     fixed_time_tolerance_seconds: int = Field(default=900, ge=0)
     default_service_seconds: int = Field(default=600, ge=0)
     route_solver_seconds: float = Field(default=3, gt=0)
