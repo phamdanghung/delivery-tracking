@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import TripOptimization from "./optimization";
 import PodGallery from "./pod";
+import TrackingLinks from "./tracking";
 import {
   commitmentLabels,
   datetimePayload,
@@ -651,6 +652,7 @@ export default function DispatchWorkspace({
             </ol>
           </section>
           <PodGallery delivery={detail.delivery.id} api={api}/>
+          <TrackingLinks key={detail.delivery.id} delivery={detail.delivery.id} status={detail.delivery.status} api={api}/>
           <section className="card">
             <h2>Lịch giao lại</h2>
             {detail.reschedule_proposals.map((p) => (

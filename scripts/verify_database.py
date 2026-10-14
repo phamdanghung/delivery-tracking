@@ -39,6 +39,7 @@ def command(*args: str, url: str, test: bool = False) -> None:
     environment = dict(os.environ)
     environment.update(DATABASE_URL=url, APP_ENV="test" if test else "local")
     environment.update(
+        REDIS_URL=settings.redis_url.get_secret_value(),
         TRACCAR_URL=settings.traccar_url,
         TRACCAR_EMAIL=settings.traccar_email,
         TRACCAR_PASSWORD=settings.traccar_password.get_secret_value(),

@@ -87,6 +87,9 @@ services:
       dockerfile: infra/docker/api.Dockerfile
     environment:
       APP_ENV: local
+      TRACKING_PUBLIC_BASE_URL: ${TRACKING_PUBLIC_BASE_URL:-http://localhost:3000}
+      TRACKING_TOKEN_REQUESTS_PER_MINUTE: ${TRACKING_TOKEN_REQUESTS_PER_MINUTE:-60}
+      TRACKING_PEER_REQUESTS_PER_MINUTE: ${TRACKING_PEER_REQUESTS_PER_MINUTE:-600}
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-fleet}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-fleet_delivery}
       REDIS_URL: redis://redis:6379/0
       S3_ENDPOINT_URL: http://minio:9000

@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app import auth, deliveries, driver, fleet, geofence, gps, pod, routes
+from app import auth, deliveries, driver, fleet, geofence, gps, pod, routes, tracking
 from app.config import get_settings
 from app.health import readiness
 
@@ -52,6 +52,15 @@ class RequestContextMiddleware:
             if message["type"] == "http.response.start":
                 status_code = message["status"]
                 message.setdefault("headers", []).append((b"x-request-id", request_id.encode()))
+                if scope["path"].startswith(("/api/v1/public/tracking/", "/api/v1/tracking-links")):
+                    message["headers"].extend(
+                        [
+                            (b"cache-control", b"no-store"),
+                            (b"referrer-policy", b"no-referrer"),
+                            (b"x-robots-tag", b"noindex, nofollow"),
+                            (b"x-content-type-options", b"nosniff"),
+                        ]
+                    )
             await send(message)
 
         try:
@@ -83,7 +92,7 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
 
 
 settings = get_settings()
-app = FastAPI(title="Fleet Delivery API — M5", version="1.5.0", lifespan=lifespan)
+app = FastAPI(title="Fleet Delivery API — M6", version="1.6.0", lifespan=lifespan)
 app.include_router(auth.router)
 app.include_router(fleet.router)
 app.include_router(gps.router)
@@ -92,6 +101,7 @@ app.include_router(routes.router)
 app.include_router(driver.router)
 app.include_router(geofence.router)
 app.include_router(pod.router)
+app.include_router(tracking.router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
