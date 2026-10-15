@@ -1,6 +1,6 @@
 # M7 — Fuel / Expenses / Maintenance / Safety
 
-Base M6 merge `b1e30f1cb3f446f38730261c39e3d8961bf4271a`, branch `codex/m7-fuel-maintenance-alerts`. Reuse canonical `fleet-delivery-dev`; head hiện tại 0008. Giữ legacy, migrations 0001–0008 và contract M1–M6.
+Base M6 merge `b1e30f1cb3f446f38730261c39e3d8961bf4271a`, branch `codex/m7-fuel-maintenance-alerts`. Reuse canonical `fleet-delivery-dev`; head khi bắt đầu 0008, M7 nâng lên 0009. Giữ legacy, migrations 0001–0008 và contract M1–M6.
 
 ## Đã khóa
 
