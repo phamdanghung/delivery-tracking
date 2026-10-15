@@ -38,6 +38,7 @@ def audit(
     identifier: Any,
     before: Any = None,
     after: Any = None,
+    reason: str | None = None,
 ) -> None:
     # Callers pass only public DTOs: password/session/token material never enters audit.
     db.execute(
@@ -50,6 +51,7 @@ def audit(
             resource_id=str(identifier),
             before_json=before,
             after_json=after,
+            reason=reason,
             request_id=request.state.request_id,
         )
     )

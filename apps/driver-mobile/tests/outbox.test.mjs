@@ -8,6 +8,34 @@ import { unlinkSync } from 'node:fs';
 import { Outbox } from '../src/offline/outbox.ts';
 
 const command = (id, resource='trip') => ({client_action_id:id, occurred_at:'2026-10-07T07:00:00Z', action:{kind:'START_TRIP',resource_id:resource}});
+const expenseCommand = (id, resource='trip') => ({ ...command(id,resource), action:{kind:'EXPENSE_CREATE',resource_id:resource,data:{type:'TOLL',amount:'10000',incurred_at:'2026-10-14T07:00:00Z',receipt_metadata:null}} });
+test('M7 expense survives offline restart with the exact ID/payload after a lost response',async()=> {
+  const filename=join(tmpdir(),`fleet-m7-${randomUUID()}.db`);
+  let db=database(filename);let store=new Outbox(db,'driver');await store.init();
+  const original=expenseCommand('expense');await store.enqueue(original);
+  await store.sync(async()=>{throw Error('response lost after commit')},()=>{});
+  db.native.close();db=database(filename);store=new Outbox(db,'driver');await store.init();
+  const sent=[];await store.sync(async x=>{sent.push(x);return {ok:true,retryable:false}},()=>{});
+  assert.deepEqual(sent,[original]);assert.equal((await store.list())[0].state,'SYNCED');
+  await store.enqueue(original);assert.equal((await store.list()).length,1);
+  await assert.rejects(store.enqueue({...original,action:{...original.action,data:{...original.action.data,amount:'20000'}}}));
+  db.native.close();unlinkSync(filename);
+});
+test('M7 expense conflict blocks its trip only, remains immutable after restart, and uses a new linked command',async()=> {
+  const filename=join(tmpdir(),`fleet-m7-conflict-${randomUUID()}.db`);
+  let db=database(filename);let store=new Outbox(db,'driver');await store.init();
+  const old=expenseCommand('old','trip-a');await store.enqueue(old);await store.enqueue(expenseCommand('same','trip-a'));await store.enqueue(expenseCommand('other','trip-b'));
+  const sent=[];await store.sync(async x=>{sent.push(x.client_action_id);return {ok:x.client_action_id!=='old',retryable:false,conflict:x.client_action_id==='old'}},()=>{});
+  assert.deepEqual(sent,['old','other']);db.native.close();db=database(filename);store=new Outbox(db,'driver');await store.init();
+  await store.retry();await store.sync(async()=>{throw Error('conflict and dependent action must not replay')},()=>{});
+  assert.deepEqual((await store.list())[0].command,old);
+  await store.reviewed('old',{review_token:'fresh',state:{status:'ACTIVE'},conflict:'changed'});await store.discard('old','Đã xem chuyến mới',new Date().toISOString());
+  await store.sync(async()=>({ok:true,retryable:false}),()=>{},async()=>({ok:true,retryable:false}));
+  await store.enqueue(expenseCommand('replacement','trip-a'),['trip:trip-a'],'old');
+  assert.equal((await store.list()).at(-1).command.replaces_client_action_id,'old');
+  assert.deepEqual((await store.list())[0].command,old);
+  db.native.close();unlinkSync(filename);
+});
 test('POD upload precedes DELIVERED after offline restart; lost response replays exact image ID', async()=> {
   const filename=join(tmpdir(),`fleet-m5-${randomUUID()}.db`);
   const db=database(filename);const store=new Outbox(db,'driver');await store.init();

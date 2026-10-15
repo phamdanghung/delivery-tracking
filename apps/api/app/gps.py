@@ -159,6 +159,12 @@ def ingest(db: Connection, raw: dict[str, Any]) -> bool:
     from app.geofence import process_position
 
     process_position(db, vehicle_id, item)
+    from app.safety import process_safety_position
+
+    process_safety_position(db, vehicle_id, item)
+    from app.maintenance import traccar_odometer
+
+    traccar_odometer(db, vehicle_id, item, raw)
     return True
 
 

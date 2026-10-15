@@ -119,7 +119,21 @@ def test_real_traccar_rest_socket_feed_and_three_vehicle_mapping(context):
                 response = client.delete(
                     f"/api/v1/vehicles/{vehicle['id']}", headers=header(tokens)
                 )
-                assert response.status_code == 204
+                if response.status_code == 409:
+                    # M7 can retain a real outside-hours incident from this M1
+                    # simulated feed. Such operational history must prevent deletion.
+                    from sqlalchemy import text
+
+                    with context[1].connect() as db:
+                        assert (
+                            db.scalar(
+                                text("SELECT count(*) FROM safety_alerts WHERE vehicle_id=:id"),
+                                {"id": vehicle["id"]},
+                            )
+                            > 0
+                        )
+                else:
+                    assert response.status_code == 204
             for device in devices:
                 response = traccar.delete(base + f"/api/devices/{device['id']}")
                 assert response.status_code == 204

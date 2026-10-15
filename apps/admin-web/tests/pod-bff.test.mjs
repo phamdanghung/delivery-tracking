@@ -62,3 +62,52 @@ test("POD gallery uses authenticated BFF GET routes; no public or write bridge",
     await new Promise((resolve) => server.close(resolve));
   }
 });
+
+test("M7 BFF preserves staff auth, scoped read/write, CSRF and bounded private receipt uploads",async()=> {
+  const seen=[];
+  const server=createServer(async(req,res)=> {
+    const chunks=[];for await (const part of req) chunks.push(part);
+    seen.push({path:req.url,authorization:req.headers.authorization,mime:req.headers['content-type'],metadata:req.headers['x-receipt-metadata'],bytes:Buffer.concat(chunks).length});
+    res.setHeader('Content-Type','application/json');res.statusCode=!req.headers.authorization?401:req.headers.authorization==='Bearer denied'?403:200;
+    res.end(JSON.stringify({id:'transport-only'}));
+  });
+  server.listen(0,'127.0.0.1');await once(server,'listening');
+  const previous=process.env.API_URL;process.env.API_URL=`http://127.0.0.1:${server.address().port}`;
+  try {
+    const origin=moduleUrl(await readFile(new URL('../app/api/internal/origin.ts',import.meta.url),'utf8'));
+    const source=(await readFile(new URL('../app/api/internal/[...path]/route.ts',import.meta.url),'utf8'))
+      .replace('"next/server"',JSON.stringify(pathToFileURL(require.resolve('next/server')).href))
+      .replace('"../origin"',JSON.stringify(origin));
+    const handler=await import(moduleUrl(source+"\nexport const m7TransportInstance = 7;\n"));
+    async function invoke(path,method='GET',body,headers={}) {
+      return handler[method](new NextRequest(`http://localhost/api/internal/${path}`,{method,body,
+        headers:{host:'localhost',origin:'http://localhost',cookie:'fleet_access=staff',...headers}}),
+        {params:Promise.resolve({path:path.split('/')})});
+    }
+    const id='11111111-1111-4111-8111-111111111111';
+    for (const path of ['fuel/profiles','fuel/entries',`fuel/entries/${id}/receipt-url`,'fuel/reconciliations','maintenance/status','maintenance/events',`maintenance/events/${id}/receipt-url`,'vehicle-documents','safety/alerts','expenses',`expenses/${id}/receipt-url`]) {
+      assert.equal((await invoke(path)).status,200,JSON.stringify({path,seen}));assert.equal(seen.at(-1).authorization,'Bearer staff');
+      assert.equal((await invoke(path,'GET',undefined,{cookie:''})).status,401);
+      assert.equal((await invoke(path,'GET',undefined,{cookie:'fleet_access=denied'})).status,403);
+    }
+    assert.equal((await invoke(`safety/alerts/${id}/state`,'PATCH',JSON.stringify({from_state:'NEW',to_state:'SEEN'}))).status,200);
+    const before=seen.length;
+    assert.equal((await invoke('expenses','POST','{}',{origin:'http://attacker.invalid'})).status,403);
+    assert.equal((await invoke('public/tracking/token/expenses')).status,404);
+    assert.equal((await invoke('vehicles/'+id+'/commands','POST','{}')).status,404);
+    assert.equal((await invoke('expense-receipts','GET')).status,404);assert.equal(seen.length,before);
+    const metadata=JSON.stringify({client_action_id:id,trip_id:id,sha256:'a'.repeat(64),content_type:'image/png',source:'ALBUM_SELECTED',captured_at:'2026-10-15T07:00:00Z'});
+    const bytes=new Uint8Array([137,80,78,71]).buffer;
+    const uploaded=await invoke('expense-receipts','POST',bytes,{'content-type':'image/png','x-receipt-metadata':metadata});
+    assert.equal(uploaded.status,200);assert.equal(uploaded.headers.get('cache-control'),'no-store');
+    assert.equal(seen.at(-1).metadata,metadata);assert.equal(seen.at(-1).bytes,4);assert.equal(seen.at(-1).mime,'image/png');
+    assert.equal((await invoke('vehicle-receipts','POST',bytes,{'content-type':'image/png','x-receipt-metadata':metadata})).status,200);
+    const count=seen.length;
+    assert.equal((await invoke('expense-receipts','POST',bytes,{'content-type':'image/png'})).status,422);
+    assert.equal((await invoke('expense-receipts','POST',new Uint8Array(20*1024*1024+1).buffer,{'content-type':'image/png','x-receipt-metadata':metadata})).status,413);
+    assert.equal(seen.length,count);
+  } finally {
+    if(previous===undefined)delete process.env.API_URL;else process.env.API_URL=previous;
+    await new Promise(resolve=>server.close(resolve));
+  }
+});

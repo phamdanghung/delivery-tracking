@@ -23,6 +23,8 @@ from app.delivery_schemas import (
     StatusCommand,
     TripOut,
 )
+from app.expense_schemas import ExpenseData, ExpenseOut
+from app.expenses import expense_create
 from app.geofence import ArrivalCorrection, correct_arrival
 from app.pod_metadata import PodMetadata
 from app.pod_schemas import PodPhotoOut
@@ -60,8 +62,14 @@ class PodAction(Input):
     data: PodMetadata
 
 
+class ExpenseAction(Input):
+    kind: Literal["EXPENSE_CREATE"]
+    resource_id: UUID
+    data: ExpenseData
+
+
 Action = Annotated[
-    StartAction | StatusAction | RescheduleAction | CorrectionAction | PodAction,
+    StartAction | StatusAction | RescheduleAction | CorrectionAction | PodAction | ExpenseAction,
     Field(discriminator="kind"),
 ]
 
@@ -138,7 +146,7 @@ def conflict_receipt(command: OfflineCommand, user: User, db: Db) -> Any:
 def conflict_state(command: OfflineCommand, user: User, db: Db) -> dict[str, Any]:
     action = command.action
     try:
-        if isinstance(action, StartAction):
+        if isinstance(action, (StartAction, ExpenseAction)):
             trip_state: dict[str, Any] = jsonable_encoder(trip_detail(db, action.resource_id, user))
             return trip_state
         detail = detail_delivery(action.resource_id, user, db)
@@ -333,7 +341,9 @@ def today(user: User, db: Db) -> dict[str, Any]:
     return {"trips": trips, "deliveries": details, "route_stops": route_stops, "gps": gps}
 
 
-@router.post("/actions", response_model=TripOut | DeliveryOut | RescheduleOut | PodPhotoOut)
+@router.post(
+    "/actions", response_model=TripOut | DeliveryOut | RescheduleOut | PodPhotoOut | ExpenseOut
+)
 def offline_action(command: OfflineCommand, user: User, request: Request, db: Db) -> JSONResponse:
     if user.role != "DRIVER":
         raise HTTPException(403, "Chỉ tài xế được đồng bộ thao tác offline")
@@ -376,8 +386,11 @@ def offline_action(command: OfflineCommand, user: User, request: Request, db: Db
                     replacement is None
                     or replacement["command_json"]["action"]["resource_id"]
                     != str(action.resource_id)
-                    or (replacement["command_json"]["action"]["kind"] == "START_TRIP")
-                    != isinstance(action, StartAction)
+                    or (
+                        replacement["command_json"]["action"]["kind"]
+                        in ("START_TRIP", "EXPENSE_CREATE")
+                    )
+                    != isinstance(action, (StartAction, ExpenseAction))
                 ):
                     raise HTTPException(
                         409, "Command thay thế phải liên kết conflict đã bỏ của cùng entity"
@@ -387,6 +400,10 @@ def offline_action(command: OfflineCommand, user: User, request: Request, db: Db
                 replacement_valid = True
             if isinstance(action, StartAction):
                 result = start_trip(action.resource_id, user, request, db)
+            elif isinstance(action, ExpenseAction):
+                result = expense_create(
+                    action.resource_id, action.data, command.client_action_id, user, request, db
+                )
             elif isinstance(action, StatusAction):
                 result = change_status(action.resource_id, action.data, user, request, db)
             elif isinstance(action, CorrectionAction):

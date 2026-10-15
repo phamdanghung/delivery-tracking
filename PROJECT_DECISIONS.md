@@ -422,6 +422,36 @@ Theo dõi:
 - Điều kiện đóng M6: sửa regression Web POD/BFF và chứng minh nguyên nhân solver local không phải regression logic; CI đạt ngoài raw audit được quyết định này bao phủ; không còn blocker khác.
 - Ghi chú: không sửa DEC accepted-risk cũ; không merge PR #5, không chuyển M7.
 
+### DEC-047 — Đối soát nhiên liệu theo kỳ M7
+- Ngày chốt: 14/10/2026. Milestone: M7; bổ sung quyết định cũ, không sửa lịch sử.
+- ADMIN/DISPATCHER nhập và xác nhận FROM → TO có timezone, FROM < TO, đúng một xe; không mặc định giữa hai lần đổ. Các kỳ FINAL cùng xe không được chồng lấn; DRAFT được phép chồng lấn nhưng phải kiểm tra khi chốt.
+- Chỉ dùng km thực Traccar, idle thực Traccar/ACC và fuel profile có hiệu lực. Không km tuyến dự kiến/M3, dữ liệu giả hoặc fallback đường chim bay. Profile cùng xe không chồng lấn; khi thay đổi trong kỳ phải chia đoạn theo hiệu lực và cộng expected_liters của các đoạn.
+- Công thức theo contract: distance_km × driving_l_per_100km / 100 + idle_hours × idling_l_per_hour. Tổng actual_liters/cost từ tất cả fuel entries hợp lệ cùng xe thuộc kỳ; telemetry chỉ tính một lần, không tính lại cho mỗi lần đổ.
+- Lưu variance có dấu: (actual_liters - expected_liters) / expected_liters × 100; chỉ cảnh báo ABS(variance) > 15%, không cảnh báo đúng 15%.
+- Thiếu profile/GPS/km đáng tin cậy/ACC khi cần hoặc expected_liters <= 0: vẫn lưu fuel entry, kỳ CHƯA ĐỦ DỮ LIỆU ĐỐI SOÁT với lý do, variance null, không cảnh báo. Cho tính lại khi đủ dữ liệu, giữ version/audit/thời điểm; không sửa âm thầm kết quả cũ.
+- Entries là dữ liệu gốc, không xóa/chuyển do kỳ thay đổi. Audit tạo/sửa/xóa hợp lệ entry, tạo/chốt/tính lại kỳ, profile áp dụng, expected/actual/variance, thiếu dữ liệu và cảnh báo.
+
+### DEC-048 — Safety theo incident và nguồn đáng tin cậy M7
+- Ngày chốt: 14/10/2026. Milestone: M7; không sửa DEC cũ.
+- Chỉ ADMIN cấu hình ngưỡng tốc độ, điều kiện/ngoại lệ ngoài giờ, xe và hiệu lực. Ngoại lệ có lý do, thời gian bắt đầu/kết thúc hữu hạn, audit tạo/sửa/xóa; không ngoại lệ vô thời hạn.
+- Ngoài giờ mặc định 18:00 → 07:30: GPS hợp lệ và ACC bật hoặc có di chuyển thực tế. Không cảnh báo chỉ vì ping khi ACC tắt/đứng yên/dữ liệu không tin cậy.
+- Speeding: GPS hợp lệ/fresh, vượt ngưỡng cấu hình, không thuộc ngoại lệ hợp lệ. Không tạo alert mới từ STALE/LOST. Thiếu GPS/ACC/source đáng tin cậy thì fail-safe, không giả định vi phạm.
+- Harsh braking/out-of-area chỉ bật khi đã có cấu hình, nguồn tin cậy và contract/threshold được chủ dự án phê duyệt; chưa đủ thì không tự đoán hoặc tạo cảnh báo giả.
+- Một alert mỗi incident/episode mỗi loại; tiếp tục vi phạm cập nhật incident hiện tại, trở lại bình thường đủ điều kiện kết thúc incident, vi phạm sau đó tạo incident mới. REST/WebSocket không tạo trùng. Lifecycle incident độc lập trạng thái xử lý.
+- ADMIN/DISPATCHER xử lý NEW → SEEN → RESOLVED; DRIVER không đổi trạng thái, chỉ xem liên quan nếu UX yêu cầu. RESOLVED bắt buộc lý do, actor/time/old/new; không xóa lịch sử; SEEN không phải RESOLVED.
+- Audit cấu hình/ngoại lệ/tạo alert/SEEN/RESOLVED/lý do xử lý/nguồn dữ liệu chính.
+
+### DEC-049 — Quyền, maintenance và contract additive M7
+- Ngày chốt: 14/10/2026. Milestone: M7; không sửa DEC cũ.
+- ADMIN quản lý fuel profiles, maintenance rules/events, giấy tờ xe; xem toàn bộ nhiên liệu/chi phí/maintenance/safety và thao tác quản trị M7. DISPATCHER ghi/xem chi phí và nhiên liệu, xem maintenance phục vụ điều phối, xử lý safety theo DEC-048; không sửa profile/rule/giấy tờ/cấu hình ADMIN.
+- DRIVER chỉ ghi/xem chi phí của chính mình trong phạm vi contract/phân công, không xem chi phí người khác; không quản lý fuel profile/maintenance/documents hoặc sửa safety. Không suy rộng quyền ghi nhiên liệu cho DRIVER.
+- Chi phí DRIVER hỗ trợ offline/outbox/idempotency M4, audit và không trùng reconnect/retry; ảnh biên lai tùy chọn, private.
+- Maintenance riêng từng xe: km/ngày/cả hai, ngưỡng nào đến trước dùng để cảnh báo. Mốc lần bảo dưỡng hợp lệ gần nhất hoặc mốc ADMIN nhập lúc khởi tạo; không tự suy ra lịch sử.
+- Event bảo dưỡng riêng có xe/task/rule, ngày thực hiện, odometer nếu có, ghi chú, người ghi nhận, chi phí/chứng từ nếu có, audit; không sửa/xóa lịch sử âm thầm.
+- Phân biệt chưa đến hạn/sắp đến hạn/đến hạn/quá hạn; lead_km/lead_days phải cấu hình hoặc theo contract, không tự đoán. Ưu tiên odometer thực Traccar khi contract hỗ trợ; thiếu dữ liệu tin cậy cho phép mốc quản trị có nguồn rõ, không tạo km giả.
+- Cho bổ sung GET/POST/PATCH cần thiết cho fuel profiles/entries/reconciliation, expenses, maintenance rules/events, vehicle documents, safety: additive, OpenAPI đồng bộ, không phá contract cũ, đúng RBAC/audit, không workflow ngoài M7.
+- Test bắt buộc: RBAC, không lộ chi phí DRIVER khác, offline/idempotency, maintenance km/ngày/cái nào đến trước/event reset/odometer thiếu, contract/OpenAPI/audit/migration.
+
 ## 14. Milestone boundaries
 
 ### M0

@@ -3,7 +3,7 @@ import { AppState } from "react-native";
 import { useNetworkState } from "expo-network";
 import { randomUUID } from "expo-crypto";
 import { credentials, database } from "../offline/storage";
-import { Outbox, entityKeys, finished, type Command, type PendingAction, type Review } from "../offline/outbox";
+import { Outbox, entityKeys, finished, tripAction, type Command, type PendingAction, type Review } from "../offline/outbox";
 import { projected } from "./projection";
 import { readAsset } from "../pod/assets";
 
@@ -21,6 +21,7 @@ export type Cache = {
   route_stops: Record<string, { distance_m: number; violation: string | null; window_end: string | null }>;
   gps: Record<string, { freshness: "NORMAL" | "STALE" | "LOST"; gps_at: string | null }>;
   pod_photos?: Record<string, { id: string; trip_stop_id: string | null }[]>;
+  expenses?: { id: string; trip_id: string; type: string; amount: string; note: string | null; incurred_at: string; client_action_id: string | null; receipt_id: string | null }[];
 };
 type Session = { access_token: string; refresh_token: string; user: { id: string; role: string; full_name: string } };
 class ApiError extends Error { constructor(readonly status: number, message: string) { super(message); } }
@@ -28,7 +29,7 @@ const apiBase = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 type State = {
   user: Session["user"] | null; cache: Cache | null; queue: PendingAction[]; ready: boolean;
   online: boolean; busy: boolean; error: string; login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>; retry: () => Promise<void>; enqueue: (action: Command["action"]) => Promise<void>;
+  logout: () => Promise<void>; retry: () => Promise<void>; enqueue: (action: Command["action"], clientActionId?: string) => Promise<void>;
   reviewConflict: (id: string) => Promise<void>; discardConflict: (id: string, reason: string) => Promise<void>;
   replacementId: string | null; selectReplacement: (id: string | null) => void;
   savePod: (id: string, value: unknown) => Promise<void>; loadPod: <T>(id: string) => Promise<T | null>;
@@ -38,6 +39,8 @@ export const useDriver = () => { const value = useContext(Context); if (!value) 
 
 export function DriverProvider({ children }: { children: ReactNode }) {
   const session = useRef<Session | null>(null);
+  const credentialTail = useRef<Promise<unknown>>(Promise.resolve());
+  const renewal = useRef<{ token: string; flight: Promise<Session> } | null>(null);
   const store = useRef<Outbox | null>(null);
   const active = useRef<Promise<void> | null>(null);
   const network = useNetworkState();
@@ -49,6 +52,15 @@ export function DriverProvider({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [replacementId, setReplacementId] = useState<string | null>(null);
+  async function publishSession(value: Session, expectedOwner?: string) {
+    const task = credentialTail.current.then(async () => {
+      if (expectedOwner && session.current?.user.id !== expectedOwner) throw new ApiError(409, "Tài khoản đã thay đổi; không phục hồi phiên cũ");
+      await credentials.set(JSON.stringify(value));
+      if (session.current?.user.id !== value.user.id) store.current = null;
+      session.current = value;
+    });
+    credentialTail.current = task.catch(() => undefined); await task;
+  }
   async function raw(path: string, body?: unknown, token?: string) {
     if (!apiBase) throw new Error("Thiếu cấu hình EXPO_PUBLIC_API_URL");
     const controller = new AbortController();
@@ -70,27 +82,46 @@ export function DriverProvider({ children }: { children: ReactNode }) {
   async function request(path: string, body?: unknown) {
     const current = session.current;
     if (!current) throw new ApiError(401, "Cần đăng nhập");
-    try { return await raw(path, body, current.access_token); }
+    async function guarded(token: string) {
+      const result = await raw(path, body, token);
+      if (session.current?.user.id !== current!.user.id) throw new ApiError(409, "Tài khoản đã thay đổi; không dùng dữ liệu của tài khoản trước");
+      return result;
+    }
+    try { return await guarded(current.access_token); }
     catch (failure) {
       if (!(failure instanceof ApiError) || failure.status !== 401) throw failure;
-      const renewed: Session = await raw("auth/refresh", { refresh_token: current.refresh_token });
-      if (renewed.user.id !== current.user.id || renewed.user.role !== "DRIVER") throw new ApiError(403, "Tài khoản không còn quyền tài xế");
-      await credentials.set(JSON.stringify(renewed));
-      session.current = renewed;
-      return raw(path, body, renewed.access_token);
+      if (session.current?.user.id !== current.user.id) throw new ApiError(409, "Tài khoản đã thay đổi; không phục hồi phiên cũ");
+      if (session.current.access_token !== current.access_token) return guarded(session.current.access_token);
+      if (renewal.current?.token !== current.refresh_token) {
+        const flight = raw("auth/refresh", { refresh_token: current.refresh_token }).then(async (value: Session) => {
+          if (value.user.id !== current.user.id || value.user.role !== "DRIVER") throw new ApiError(403, "Tài khoản không còn quyền tài xế");
+          await publishSession(value, current.user.id); return value;
+        });
+        renewal.current = { token: current.refresh_token, flight };
+      }
+      const flight = renewal.current.flight;
+      let renewed: Session;
+      try { renewed = await flight; }
+      finally { if (renewal.current?.flight === flight) renewal.current = null; }
+      return guarded(renewed.access_token);
     }
   }
   async function activate(value: Session) {
     const next = new Outbox(await database, value.user.id);
     await next.init();
-    store.current = next; session.current = value;
-    setUser(value.user); setCache(await next.load<Cache>("today")); setQueue(await next.list());
+    const cached = await next.load<Cache>("today"); const pending = await next.list();
+    if (session.current && session.current.user.id !== value.user.id) throw new ApiError(409, "Tài khoản đã thay đổi; không khôi phục cache cũ");
+    store.current = next; if (!session.current) session.current = value;
+    setCache(cached); setQueue(pending); setUser(session.current.user);
     setReplacementId(null);
   }
   async function freshCache(): Promise<Cache> {
+    const owner = session.current?.user.id;
     const data: Cache = await request("driver/today");
     const photos = await Promise.all(Object.keys(data.deliveries).map(async (id) => [id, await request(`deliveries/${id}/pod/photos`)] as const));
-    return { ...data, pod_photos: Object.fromEntries(photos), saved_at: new Date().toISOString() };
+    const expenses = await request("expenses");
+    if (owner !== session.current?.user.id) throw new Error("Tài khoản đã thay đổi; không dùng dữ liệu của tài khoản trước");
+    return { ...data, expenses, pod_photos: Object.fromEntries(photos), saved_at: new Date().toISOString() };
   }
   useEffect(() => {
     let alive = true;
@@ -134,12 +165,34 @@ export function DriverProvider({ children }: { children: ReactNode }) {
                 // 409 goes through the durable command receipt for M4 conflict review/audit.
               }
             }
+            if (command.action.kind === "EXPENSE_CREATE") {
+              const metadata = (command.action.data as { receipt_metadata?: { sha256: string; content_type: string } | null }).receipt_metadata;
+              if (metadata) {
+                const bytes = await readAsset(session.current!.user.id, command.client_action_id, metadata.sha256);
+                const upload = async () => {
+                  const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 30000);
+                  try {
+                    const encoded = JSON.stringify(metadata).replace(/[^\x20-\x7E]/g, (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, "0")}`);
+                    const result = await fetch(`${apiBase}/api/v1/expense-receipts`, { method: "POST", signal: controller.signal, body: bytes.buffer,
+                      headers: { "Content-Type": metadata.content_type, "X-Receipt-Metadata": encoded, Authorization: `Bearer ${session.current!.access_token}` } });
+                    if (!result.ok) { const value = await result.json(); throw new ApiError(result.status, typeof value.detail === "string" ? value.detail : "Không upload được biên lai"); }
+                  } finally { clearTimeout(timer); }
+                };
+                try { await upload(); }
+                catch (failure) {
+                  if (failure instanceof ApiError && failure.status === 401) { await request("auth/me"); await upload(); }
+                  else if (!(failure instanceof ApiError && failure.status === 409)) throw failure;
+                  // Persist an immutable 409 receipt via driver/actions for M4 conflict handling.
+                }
+              }
+            }
             const response = await request("driver/actions", command);
             // Persist the acknowledged state before marking SYNCED. A failed refresh
             // must not restore an old ARRIVED after a successful correction.
             const acknowledged = projected(await local.load<Cache>("today"), [{ command, state: "WAITING" }]);
             if (acknowledged) {
               if (command.action.kind === "START_TRIP") acknowledged.trips = acknowledged.trips.map((trip) => trip.id === response.id ? response : trip);
+              else if (command.action.kind === "EXPENSE_CREATE") acknowledged.expenses = [...(acknowledged.expenses ?? []).filter((x) => x.id !== response.id), response];
               else if (["STATUS", "CORRECT_ARRIVED"].includes(command.action.kind) && acknowledged.deliveries[response.id]) acknowledged.deliveries[response.id].delivery = response;
               await local.save("today", acknowledged); setCache(acknowledged);
             }
@@ -185,23 +238,26 @@ export function DriverProvider({ children }: { children: ReactNode }) {
     try {
       const value: Session = await raw("auth/login", { email, password });
       if (value.user.role !== "DRIVER") throw new Error("Ứng dụng chỉ dành cho tài xế");
+      if (active.current && session.current?.user.id !== value.user.id) throw new Error("Đợi đồng bộ hoàn tất trước khi đổi tài khoản");
       if (session.current && session.current.user.id !== value.user.id && queue.some((x) => !finished(x))) throw new Error("Cần đồng bộ thao tác của tài khoản hiện tại trước khi đổi tài khoản");
-      await credentials.set(JSON.stringify(value)); await activate(value);
+      await publishSession(value); await activate(value);
     } finally { setBusy(false); }
   }
   async function logout() {
     if (active.current) throw new Error("Đợi đồng bộ hoàn tất trước khi đăng xuất");
     if ((await store.current?.list())?.some((x) => !finished(x))) throw new Error("Còn thao tác chưa đồng bộ; vui lòng đồng bộ trước khi đăng xuất");
     await request("auth/logout", { refresh_token: session.current?.refresh_token });
-    await credentials.remove(); session.current = null; store.current = null; setUser(null); setCache(null); setQueue([]); setReplacementId(null);
+    const remove = credentialTail.current.then(async () => { await credentials.remove(); session.current = null; store.current = null; });
+    credentialTail.current = remove.catch(() => undefined); await remove;
+    setUser(null); setCache(null); setQueue([]); setReplacementId(null);
   }
-  async function enqueue(action: Command["action"]) {
+  async function enqueue(action: Command["action"], clientActionId?: string) {
     if (!store.current) throw new Error("Cần đăng nhập trước khi lưu thao tác");
-    const command = { client_action_id: action.kind === "POD_UPLOAD" ? (action.data as { client_action_id: string }).client_action_id : randomUUID(), occurred_at: new Date().toISOString(), action };
+    const command = { client_action_id: action.kind === "POD_UPLOAD" ? (action.data as { client_action_id: string }).client_action_id : clientActionId ?? randomUUID(), occurred_at: new Date().toISOString(), action };
     const keys = entityKeys(command, (await store.current.load<Cache>("today"))?.trips);
     const items = await store.current.list();
     if (items.some((x) => x.state === "CONFLICT" && (x.entity_keys ?? entityKeys(x.command)).some((key) => keys.includes(key)))) throw new Error("Điểm giao đang cần xử lý conflict; xem dữ liệu mới và xác nhận bỏ thao tác cũ trước");
-    const selected = items.find((x) => x.command.client_action_id === replacementId && x.command.action.resource_id === action.resource_id && (x.command.action.kind === "START_TRIP") === (action.kind === "START_TRIP"));
+    const selected = items.find((x) => x.command.client_action_id === replacementId && x.command.action.resource_id === action.resource_id && tripAction(x.command.action.kind) === tripAction(action.kind));
     await store.current.enqueue(command, keys, selected?.command.client_action_id);
     if (selected) setReplacementId(null);
     refreshQueue(); void syncRef.current();
