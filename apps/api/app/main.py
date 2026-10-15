@@ -29,13 +29,21 @@ from app import (
     vehicle_receipts,
 )
 from app.config import get_settings
+from app.deployment_policy import enforce_production_config
 from app.health import readiness
 
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         fields = {"level": record.levelname, "message": record.getMessage()}
-        for key in ("request_id", "method", "status_code", "duration_ms", "dependency"):
+        for key in (
+            "request_id",
+            "method",
+            "status_code",
+            "duration_ms",
+            "dependency",
+            "route_template",
+        ):
             if hasattr(record, key):
                 fields[key] = getattr(record, key)
         return json.dumps(fields)
@@ -68,25 +76,14 @@ class RequestContextMiddleware:
             if message["type"] == "http.response.start":
                 status_code = message["status"]
                 message.setdefault("headers", []).append((b"x-request-id", request_id.encode()))
-                if scope["path"].startswith(
-                    (
-                        "/api/v1/public/tracking/",
-                        "/api/v1/tracking-links",
-                        "/api/v1/fuel",
-                        "/api/v1/expenses",
-                        "/api/v1/maintenance",
-                        "/api/v1/safety",
-                        "/api/v1/vehicle-documents",
-                        "/api/v1/vehicle-receipts",
-                        "/api/v1/expense-receipts",
-                    )
-                ):
+                if scope["path"].startswith("/api/v1/"):
                     message["headers"].extend(
                         [
                             (b"cache-control", b"no-store"),
                             (b"referrer-policy", b"no-referrer"),
                             (b"x-robots-tag", b"noindex, nofollow"),
                             (b"x-content-type-options", b"nosniff"),
+                            (b"x-frame-options", b"DENY"),
                         ]
                     )
             await send(message)
@@ -101,6 +98,7 @@ class RequestContextMiddleware:
                     "method": scope["method"],
                     "status_code": status_code,
                     "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+                    "route_template": getattr(scope.get("route"), "path", "UNMATCHED"),
                 },
             )
 
@@ -108,6 +106,7 @@ class RequestContextMiddleware:
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
+    enforce_production_config(settings)
     tasks = []
     if settings.app_env != "test" and settings.traccar_email:
         tasks = [asyncio.create_task(gps.poll_worker()), asyncio.create_task(gps.socket_worker())]

@@ -1,4 +1,4 @@
-name: M7 fuel maintenance safety
+name: M8 acceptance and hardening
 on: [push, pull_request]
 jobs:
   frontend:
@@ -19,7 +19,11 @@ jobs:
       - run: node scripts/verify_web_surface.mjs
       - run: npm run build:mobile
       - run: node scripts/verify_mobile_surface.mjs
-      - name: M7 raw security audit (findings retained; M6 approval does not cover M7)
+      - name: Verify final non-root web image runtime surface
+        run: |
+          docker build -f infra/docker/web.Dockerfile -t fleet-m8-web-runtime .
+          docker run --rm --network none --read-only --mount type=bind,src="$GITHUB_WORKSPACE/scripts/verify_web_runtime.mjs",dst=/verify.mjs,readonly fleet-m8-web-runtime node /verify.mjs
+      - name: M8 raw security audit (findings retained; M7 approval does not cover M8)
         run: npm audit
   backend:
     runs-on: ubuntu-latest
@@ -90,3 +94,7 @@ jobs:
       - run: uv run --frozen alembic downgrade base
       - run: uv run --frozen alembic upgrade head
       - run: uv run --frozen pytest -m integration
+      - name: Actual private POD and Traccar backup/restore drill
+        run: uv run --project . --frozen ../../scripts/verify_recovery.py
+      - name: Audit locked Python runtime dependencies
+        run: uv tool run pip-audit==2.10.1 -r requirements.lock --require-hashes --disable-pip --progress-spinner off
