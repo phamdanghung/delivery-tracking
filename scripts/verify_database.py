@@ -18,7 +18,7 @@ from app.pod_storage import storage_client  # noqa: E402
 settings = Settings(_env_file=root / ".env")
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--focused", help="Only selected tests in an isolated DB; leave dev DB unchanged"
+    "--focused", nargs="+", help="Only selected tests in an isolated DB; leave dev DB unchanged"
 )
 options = parser.parse_args()
 dev_url = make_url(settings.database_url.get_secret_value())
@@ -84,7 +84,7 @@ try:
     test_connection = dev_url.set(database=test_name).render_as_string(hide_password=False)
     command("alembic", "upgrade", "head", url=test_connection, test=True)
     if options.focused:
-        command("pytest", options.focused, "-q", "-x", url=test_connection, test=True)
+        command("pytest", *options.focused, "-q", "-x", url=test_connection, test=True)
         sys.exit(0)
     command(
         "pytest",

@@ -1,4 +1,4 @@
-name: M6 customer tracking
+name: M7 fuel maintenance safety
 on: [push, pull_request]
 jobs:
   frontend:
@@ -19,7 +19,7 @@ jobs:
       - run: node scripts/verify_web_surface.mjs
       - run: npm run build:mobile
       - run: node scripts/verify_mobile_surface.mjs
-      - name: M6 raw security audit (DEC-046 accepted risk, findings retained)
+      - name: M7 raw security audit (findings retained; M6 approval does not cover M7)
         run: npm audit
   backend:
     runs-on: ubuntu-latest

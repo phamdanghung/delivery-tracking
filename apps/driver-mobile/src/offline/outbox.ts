@@ -2,7 +2,7 @@
 export type Command = {
   client_action_id: string;
   occurred_at: string;
-  action: { kind: "START_TRIP" | "STATUS" | "PROPOSE_RESCHEDULE" | "CORRECT_ARRIVED" | "POD_UPLOAD"; resource_id: string; data?: unknown };
+  action: { kind: "START_TRIP" | "STATUS" | "PROPOSE_RESCHEDULE" | "CORRECT_ARRIVED" | "POD_UPLOAD" | "EXPENSE_CREATE"; resource_id: string; data?: unknown };
   replaces_client_action_id?: string;
 };
 export type Review = { review_token: string; state: Record<string, unknown>; conflict: string };
@@ -13,9 +13,10 @@ export type PendingAction = {
   resolution_attempts?: Resolution[]; replacement_id?: string;
 };
 export const finished = (item: PendingAction) => item.state === "SYNCED" || item.state === "DISCARDED";
+export const tripAction = (kind: Command["action"]["kind"]) => kind === "START_TRIP" || kind === "EXPENSE_CREATE";
 export const entityKeys = (command: Command, trips: { id: string; stops: { delivery_id: string }[] }[] = []) => command.action.kind === "START_TRIP"
   ? [`trip:${command.action.resource_id}`, ...(trips.find((x) => x.id === command.action.resource_id)?.stops.map((x) => `delivery:${x.delivery_id}`) ?? [])]
-  : [`delivery:${command.action.resource_id}`];
+  : [tripAction(command.action.kind) ? `trip:${command.action.resource_id}` : `delivery:${command.action.resource_id}`];
 export function eligible(items: PendingAction[]): PendingAction | undefined {
   const blocked = new Set<string>();
   for (const item of items) {
@@ -59,7 +60,7 @@ export class Outbox {
       const old = items.find((x) => x.command.client_action_id === command.client_action_id);
       if (old && JSON.stringify(old.command) !== JSON.stringify(command)) throw new Error("Mã thao tác đã được dùng");
       if (old) return items;
-      const previous = replacesId ? items.find((x) => x.command.client_action_id === replacesId && x.state === "DISCARDED" && !x.replacement_id && x.command.action.resource_id === command.action.resource_id && (x.command.action.kind === "START_TRIP") === (command.action.kind === "START_TRIP")) : undefined;
+      const previous = replacesId ? items.find((x) => x.command.client_action_id === replacesId && x.state === "DISCARDED" && !x.replacement_id && x.command.action.resource_id === command.action.resource_id && tripAction(x.command.action.kind) === tripAction(command.action.kind)) : undefined;
       if (replacesId && !previous) throw new Error("Chọn conflict đã bỏ của cùng điểm/chuyến để liên kết thao tác mới");
       const linked = previous ? { ...command, replaces_client_action_id: previous.command.client_action_id } : command;
       return [...items.map((x) => x === previous ? { ...x, replacement_id: linked.client_action_id } : x), { command: linked, entity_keys: keys, state: "WAITING" }];

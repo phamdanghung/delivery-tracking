@@ -69,8 +69,10 @@ export function PhotoCapture({ delivery, stop }: { delivery: string; stop: strin
         handling.current = true;
         try {
           const context = await state.loadPod<CaptureContext>("picker");
-          const result = await Picker.getPendingResultAsync();
-          if (context && result && "canceled" in result) await accept(result, context);
+          if (context) {
+            const result = await Picker.getPendingResultAsync();
+            if (result && "canceled" in result) await accept(result, context);
+          }
         } finally { handling.current = false; }
       }
     })().catch((failure) => { if (alive) setError(failure instanceof Error ? failure.message : "Không khôi phục được ảnh"); });

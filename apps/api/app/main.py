@@ -11,7 +11,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from app import auth, deliveries, driver, fleet, geofence, gps, pod, routes, tracking
+from app import (
+    auth,
+    deliveries,
+    driver,
+    expense_receipts,
+    expenses,
+    fleet,
+    fuel,
+    geofence,
+    gps,
+    maintenance,
+    pod,
+    routes,
+    safety,
+    tracking,
+    vehicle_receipts,
+)
 from app.config import get_settings
 from app.health import readiness
 
@@ -52,7 +68,19 @@ class RequestContextMiddleware:
             if message["type"] == "http.response.start":
                 status_code = message["status"]
                 message.setdefault("headers", []).append((b"x-request-id", request_id.encode()))
-                if scope["path"].startswith(("/api/v1/public/tracking/", "/api/v1/tracking-links")):
+                if scope["path"].startswith(
+                    (
+                        "/api/v1/public/tracking/",
+                        "/api/v1/tracking-links",
+                        "/api/v1/fuel",
+                        "/api/v1/expenses",
+                        "/api/v1/maintenance",
+                        "/api/v1/safety",
+                        "/api/v1/vehicle-documents",
+                        "/api/v1/vehicle-receipts",
+                        "/api/v1/expense-receipts",
+                    )
+                ):
                     message["headers"].extend(
                         [
                             (b"cache-control", b"no-store"),
@@ -92,7 +120,7 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
 
 
 settings = get_settings()
-app = FastAPI(title="Fleet Delivery API — M6", version="1.6.0", lifespan=lifespan)
+app = FastAPI(title="Fleet Delivery API — M7", version="1.7.0", lifespan=lifespan)
 app.include_router(auth.router)
 app.include_router(fleet.router)
 app.include_router(gps.router)
@@ -102,12 +130,18 @@ app.include_router(driver.router)
 app.include_router(geofence.router)
 app.include_router(pod.router)
 app.include_router(tracking.router)
+app.include_router(fuel.router)
+app.include_router(maintenance.router)
+app.include_router(safety.router)
+app.include_router(expenses.router)
+app.include_router(expense_receipts.router)
+app.include_router(vehicle_receipts.router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allow_headers=["Content-Type", "Authorization", "X-POD-Metadata"],
+    allow_headers=["Content-Type", "Authorization", "X-POD-Metadata", "X-Receipt-Metadata"],
     expose_headers=["X-Request-ID"],
 )
 app.add_middleware(RequestContextMiddleware)

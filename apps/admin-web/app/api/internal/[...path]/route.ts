@@ -5,6 +5,7 @@ import { sameOrigin } from "../origin";
 const api = process.env.API_URL || "http://127.0.0.1:8000";
 const routes =
   /^(auth\/(login|logout|me)|tracking-links(?:\/[0-9a-f-]+\/revoke)?|users(?:\/[0-9a-f-]+)?|vehicles(?:\/[0-9a-f-]+(?:\/(live|history|odometer))?)?|drivers(?:\/[0-9a-f-]+)?|gps\/devices|routing\/config|deliveries(?:\/[0-9a-f-]+(?:\/(status|reschedule|arrival-correction|pod\/photos(?:\/[0-9a-f-]+\/url)?))?)?|trips(?:\/(config|[0-9a-f-]+(?:\/(optimize|optimization|approve))?))?)$/;
+const operations = /^(fuel\/(profiles(?:\/[0-9a-f-]+)?|entries(?:\/[0-9a-f-]+(?:\/(void|receipt-url))?)?|reconciliations(?:\/[0-9a-f-]+\/(recompute|finalize))?)|expenses(?:\/[0-9a-f-]+(?:\/receipt-url)?)?|maintenance\/(rules(?:\/[0-9a-f-]+)?|events(?:\/[0-9a-f-]+\/receipt-url)?|odometer-readings|status)|vehicle-documents(?:\/[0-9a-f-]+)?|safety\/(configs(?:\/[0-9a-f-]+)?|exceptions(?:\/[0-9a-f-]+(?:\/void)?)?|alerts(?:\/[0-9a-f-]+\/state)?)|expense-receipts|vehicle-receipts)$/;
 type Tokens = {
   access_token: string;
   refresh_token: string;
@@ -37,7 +38,8 @@ async function handle(
   context: { params: Promise<{ path: string[] }> },
 ) {
   const route = (await context.params).path.join("/");
-  if (!routes.test(route) || (route.includes("/pod/") && request.method !== "GET"))
+  const binary = (route === "expense-receipts" || route === "vehicle-receipts");
+  if ((!routes.test(route) && !operations.test(route)) || (route.includes("/pod/") && request.method !== "GET") || (binary && request.method !== "POST"))
     return NextResponse.json({ detail: "Không tìm thấy API" }, { status: 404 });
   if (
     request.method !== "GET" &&
@@ -52,26 +54,46 @@ async function handle(
       { status: 403 },
     );
   }
-  if (Number(request.headers.get("content-length") || 0) > 16384) {
+  const limit = binary ? 20 * 1024 * 1024 : 16384;
+  if (Number(request.headers.get("content-length") || 0) > limit) {
     return NextResponse.json({ detail: "Yêu cầu quá lớn" }, { status: 413 });
   }
   let refresh = request.cookies.get("fleet_refresh")?.value;
   let access = request.cookies.get("fleet_access")?.value;
   let rotated: Tokens | undefined;
-  const raw = request.method === "GET" ? undefined : await request.text();
-  if (raw && raw.length > 16384)
+  let raw: string | ArrayBuffer | undefined;
+  if (binary) {
+    const metadata = request.headers.get("x-receipt-metadata") ?? "";
+    if (!metadata || metadata.length > 8192) return NextResponse.json({ detail: "Metadata biên lai không hợp lệ" }, { status: 422 });
+    const reader = request.body?.getReader(); const chunks: Uint8Array[] = []; let length = 0;
+    if (reader) {
+      try {
+        while (true) {
+          const item = await reader.read(); if (item.done) break;
+          length += item.value.length;
+          if (length > limit) { await reader.cancel(); return NextResponse.json({ detail: "Ảnh biên lai quá lớn" }, { status: 413 }); }
+          chunks.push(item.value);
+        }
+      } finally { reader.releaseLock(); }
+    }
+    const bytes = new Uint8Array(length); let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+    raw = bytes.buffer;
+  } else raw = request.method === "GET" ? undefined : await request.text();
+  if (typeof raw === "string" && raw.length > limit)
     return NextResponse.json({ detail: "Yêu cầu quá lớn" }, { status: 413 });
   try {
-    const invoke = (body?: string) =>
+    const invoke = (body?: string | ArrayBuffer) =>
       fetch(`${api}/api/v1/${route}${request.nextUrl.search}`, {
         method: request.method,
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": binary ? request.headers.get("content-type") ?? "" : "application/json",
+          ...(binary ? { "X-Receipt-Metadata": request.headers.get("x-receipt-metadata") ?? "" } : {}),
           ...(access ? { Authorization: `Bearer ${access}` } : {}),
         },
         body,
         cache: "no-store",
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(binary ? 30000 : 10000),
       });
     let upstream = await invoke(
       route === "auth/logout"

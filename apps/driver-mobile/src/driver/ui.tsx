@@ -33,7 +33,7 @@ function ConflictCard({ item }: { item: PendingAction }) {
   const [reason, setReason] = useState(""); const [confirmed, setConfirmed] = useState(false);
   const [saving, setSaving] = useState(false); const [error, setError] = useState("");
   const action = item.command.action;
-  const labels = { START_TRIP: "Bắt đầu chuyến", STATUS: "Cập nhật trạng thái", PROPOSE_RESCHEDULE: "Đề xuất giao lại", CORRECT_ARRIVED: "Sửa Đã đến nhận sai", POD_UPLOAD: "Tải ảnh POD" };
+  const labels = { START_TRIP: "Bắt đầu chuyến", STATUS: "Cập nhật trạng thái", PROPOSE_RESCHEDULE: "Đề xuất giao lại", CORRECT_ARRIVED: "Sửa Đã đến nhận sai", POD_UPLOAD: "Tải ảnh POD", EXPENSE_CREATE: "Ghi chi phí" };
   const data = action.data as { from_status?: string; to_status?: string; reason?: string } | undefined;
   const known = state.cache?.deliveries[action.resource_id]?.delivery;
   const trip = state.cache?.trips.find((x) => x.id === action.resource_id);
@@ -45,7 +45,7 @@ function ConflictCard({ item }: { item: PendingAction }) {
     <Text style={styles.body}>Thao tác: {labels[action.kind]}{data?.to_status ? ` · ${statusLabel[data.from_status ?? ""] ?? data.from_status} → ${statusLabel[data.to_status] ?? data.to_status}` : ""}</Text>
     {!!data?.reason && <Text style={styles.body}>Lý do cũ: {data.reason}</Text>}
     <Text style={styles.body}>{item.error ?? item.review?.conflict}</Text>
-    <Text style={styles.body}>Thao tác cùng điểm giao tạm dừng. Các điểm khác vẫn đồng bộ. Xem dữ liệu mới trước khi quyết định bỏ.</Text>
+    <Text style={styles.body}>{action.kind === "EXPENSE_CREATE" ? "Chi phí cùng chuyến tạm dừng. Chuyến khác vẫn đồng bộ." : "Thao tác cùng điểm giao tạm dừng. Các điểm khác vẫn đồng bộ."} Xem dữ liệu mới trước khi quyết định bỏ.</Text>
     <Button title="Xem dữ liệu mới từ máy chủ" disabled={!state.online || state.busy || saving || !!item.resolution} onPress={() => { setConfirmed(false); void perform(() => state.reviewConflict(item.command.client_action_id)); }}/>
     {item.review && <><Text style={styles.body}>{detail?.code ? `${detail.code} · ` : ""}Trạng thái mới: {latest === "NO_LONGER_ASSIGNED" ? "Không còn được phân cho bạn" : !detail && latest === "PLANNED" ? "Đã duyệt" : statusLabel[String(latest)] ?? String(latest)}</Text>
       {detail && <Text style={styles.body}>{commitment(detail)} · ETA {time(detail.eta_at)}</Text>}
