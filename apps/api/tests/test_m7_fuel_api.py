@@ -74,7 +74,11 @@ def test_entry_survives_missing_data_versions_keep_history_rbac_and_audit(contex
     with engine.connect() as db:
         actions = (
             db.execute(
-                text("SELECT action FROM audit_logs WHERE resource_id=:id"), {"id": data["id"]}
+                text(
+                    "SELECT action FROM audit_logs WHERE resource_id=:id "
+                    "ORDER BY (after_json->>'version')::integer"
+                ),
+                {"id": data["id"]},
             )
             .scalars()
             .all()

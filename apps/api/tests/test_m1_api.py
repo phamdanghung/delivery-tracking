@@ -258,6 +258,25 @@ def test_vehicle_mapping_ingest_duplicate_out_of_order_remap_and_outage(context,
     assert (
         client.get(f"/api/v1/vehicles/{identifier}/live", headers=header(tokens)).status_code == 503
     )
+    deleted = client.delete(f"/api/v1/vehicles/{identifier}", headers=header(tokens))
+    with engine.connect() as db:
+        incident_count = db.scalar(
+            text("SELECT count(*) FROM safety_alerts WHERE vehicle_id=:id"), {"id": identifier}
+        )
+    # M7's approved outside-hours rule can record history from this fresh feed.
+    # Mapping/remapping must preserve that history and the existing delete guard.
+    if incident_count:
+        assert deleted.status_code == 409, deleted.text
+        assert deleted.json()["detail"] == (
+            "Xe đã có dữ liệu vận hành; hãy cập nhật trạng thái thay vì xóa"
+        )
+    else:
+        assert deleted.status_code == 204, deleted.text
+    unused = client.post(
+        "/api/v1/vehicles", headers=header(tokens), json={"plate_no": "UNUSED-" + uuid4().hex[:8]}
+    )
+    assert unused.status_code == 201, unused.text
     assert (
-        client.delete(f"/api/v1/vehicles/{identifier}", headers=header(tokens)).status_code == 204
+        client.delete(f"/api/v1/vehicles/{unused.json()['id']}", headers=header(tokens)).status_code
+        == 204
     )
