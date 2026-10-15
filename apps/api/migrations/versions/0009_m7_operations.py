@@ -125,13 +125,16 @@ def downgrade() -> None:
         DROP COLUMN resolved_by, DROP COLUMN resolved_at, DROP COLUMN resolution_reason,
         DROP COLUMN incident_ended_at, DROP COLUMN last_event_at, DROP COLUMN source_position_id;
       DROP TABLE safety_exceptions; DROP TABLE safety_configs;
+      ALTER TABLE expenses DROP CONSTRAINT expense_action;
       ALTER TABLE expenses DROP COLUMN client_action_id, DROP COLUMN request_hash,
-        DROP COLUMN receipt_id, DROP CONSTRAINT expense_amount, DROP CONSTRAINT expense_action;
+        DROP COLUMN receipt_id, DROP CONSTRAINT expense_amount;
       DROP TABLE expense_receipts;
+      ALTER TABLE maintenance_events DROP CONSTRAINT maintenance_event_action;
       ALTER TABLE maintenance_events DROP COLUMN receipt_id, DROP COLUMN client_action_id,
-        DROP COLUMN request_hash, DROP CONSTRAINT maintenance_event_action;
+        DROP COLUMN request_hash;
+      ALTER TABLE fuel_entries DROP CONSTRAINT fuel_entry_action;
       ALTER TABLE fuel_entries DROP COLUMN receipt_id, DROP COLUMN client_action_id,
-        DROP COLUMN request_hash, DROP CONSTRAINT fuel_entry_action;
+        DROP COLUMN request_hash;
       DROP TABLE vehicle_receipts;
       DROP TABLE vehicle_odometer_readings;
       ALTER TABLE maintenance_events DROP COLUMN rule_id, DROP COLUMN created_by,
