@@ -1,6 +1,6 @@
 # M7 FINAL — Fuel / Expenses / Maintenance / Safety
 
-Cập nhật 15/10/2026. **M7 = FAIL — chờ quyết định accepted risk riêng cho M7.** Chưa merge PR #6, không chuyển M8. DEC-046 chỉ bao phủ M6.
+Cập nhật 15/10/2026. **M7 = PASS WITH ACCEPTED RISK theo DEC-050.** Chủ dự án đã phê duyệt riêng rủi ro M7 development/local/CI; không áp dụng production. Chưa merge PR #6, không chuyển M8.
 
 ## 1. Phần đã triển khai
 
@@ -40,7 +40,7 @@ Artifacts được ignore, không commit credentials/test tokens. Canonical migr
 - Trong lượt khởi động lạnh trên host Windows đang paging đã xảy ra readiness/protocol error và bài M3 30 stop trả 422. Sau ổn định, cùng source/rule/fixture và ngưỡng <5s giữ nguyên đều PASS trong full local 186 và CI. Không skip/nới ngưỡng/fallback hoặc đổi solver. Các lượt lỗi vẫn giữ trong artifacts.
 - Hai lỗi test đã xử lý: xe có lịch sử safety phải giữ guard 409 (xe chưa có lịch sử vẫn 204); thứ tự audit kiểm tra theo version tường minh. CI cũng phát hiện rollback 0009 xóa cột trước unique constraint; đã sửa riêng thứ tự downgrade của migration M7 mới, không đổi upgrade/schema hoặc migration lịch sử. Round-trip CI đã PASS.
 
-## 5. Quyết định cần chủ dự án
+## 5. Accepted risk đã được phê duyệt
 
 Hai advisory chưa vá vẫn hiện trong raw audit:
 
@@ -49,8 +49,12 @@ Hai advisory chưa vá vẫn hiện trong raw audit:
 
 21 affected-package findings xuất phát từ hai advisory gốc; phân loại/đường dependency tham chiếu [M0_DEPENDENCY_SECURITY.md](M0_DEPENDENCY_SECURITY.md). Lockfiles không đổi; web traces và Android/iOS maps hiện tại không đưa các package advisory vào runtime bundle. Tooling vẫn tồn tại trong dependency tree/image, không tuyên bố đã loại bỏ/vá. Module M7 không thêm đường sử dụng các package này từ input nghiệp vụ.
 
-**Chưa có phê duyệt M7; không tự mở rộng DEC-046.** Nếu chủ dự án chấp nhận tạm thời, cần DEC mới chỉ M7 development/local/CI, không production/không coi đã vá; giữ raw audit/runtime gates, repo/config/cert tin cậy và Metro/Compose phạm vi cần thiết/loopback; không force fix/downgrade/suppress. Đề xuất review muộn nhất **02/11/2026 hoặc trước production**, patch upstream/runtime exposure phải đánh giá lại ngay.
+**DEC-050**, chủ dự án phê duyệt ngày 15/10/2026: chấp nhận tạm thời hai advisory trên **chỉ M7 development/local/CI**. Không production, không coi đã vá, không miễn trừ kiểm soát bảo mật khác. Giữ raw npm audit/runtime-surface gates, repo/config/cert tin cậy và Metro/Compose phạm vi cần thiết/loopback; không force fix/downgrade/suppress. Không sửa hoặc mở rộng các DEC accepted-risk cũ.
+
+Review muộn nhất **02/11/2026 hoặc trước production**, mốc nào đến trước. Upstream có bản vá sớm hơn thì ưu tiên nâng cấp, chạy lại đầy đủ các kiểm tra liên quan; advisory đi vào runtime attack surface thực tế thì dừng phần liên quan và đánh giá lại ngay. Raw audit/frontend job/workflow vẫn FAIL tại audit, được quyết định này bao phủ; không báo toàn CI xanh.
+
+Lần cập nhật này chỉ thay tài liệu quyết định/báo cáo, không đổi source, dependency hoặc runtime. Tái sử dụng bằng chứng source `85edc21` theo CODEX_TOKEN_RULES.md; không chạy lại full test/build/export/migration hoặc kích hoạt CI thủ công chỉ vì cập nhật tài liệu. CI tự động của các commit tài liệu được phân biệt với run source đã xác minh ở mục 3.
 
 ## 6. Kết luận
 
-**FAIL — còn blocker accepted risk M7 chưa được phê duyệt.** Functional tests/builds và CI backend đã PASS; raw npm audit/CI frontend vẫn FAIL được báo nguyên trạng. Chưa merge Draft PR #6; không tự chuyển M8.
+**PASS WITH ACCEPTED RISK — DEC-050.** Các kiểm tra bắt buộc và CI source đã PASS ngoài raw npm audit được phê duyệt có điều kiện; không còn blocker khác để đóng M7 trong phạm vi development/local/CI. Các giới hạn ở mục 4 vẫn giữ nguyên, không coi là đã nghiệm thu trực quan/native device/production. Chưa merge Draft PR #6; không tự chuyển M8.

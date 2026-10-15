@@ -452,6 +452,15 @@ Theo dõi:
 - Cho bổ sung GET/POST/PATCH cần thiết cho fuel profiles/entries/reconciliation, expenses, maintenance rules/events, vehicle documents, safety: additive, OpenAPI đồng bộ, không phá contract cũ, đúng RBAC/audit, không workflow ngoài M7.
 - Test bắt buộc: RBAC, không lộ chi phí DRIVER khác, offline/idempotency, maintenance km/ngày/cái nào đến trước/event reset/odometer thiếu, contract/OpenAPI/audit/migration.
 
+### DEC-050 — Accepted Risk cho M7
+- Ngày chốt: 15/10/2026.
+- Milestone liên quan: chỉ M7 development/local/CI.
+- Quyết định: chủ dự án chấp nhận tạm thời `braces GHSA-vfj7-8cjw-p6xm` và `node-forge GHSA-86w9-cpqp-85rv`. Không áp dụng production, không coi advisory đã được vá, không bỏ qua các kiểm soát bảo mật khác.
+- Điều kiện: chỉ repo/config/cert đáng tin cậy; Metro/Compose chỉ expose phạm vi cần thiết/loopback; không `npm audit fix --force`, không downgrade Expo/React Native chỉ để audit về 0, không suppress/ẩn advisory. Giữ raw npm audit và runtime-surface gates trong CI/report; raw audit vẫn có thể FAIL, không báo toàn workflow xanh.
+- Theo dõi: review muộn nhất **02/11/2026 hoặc trước production**, mốc nào đến trước. Nếu upstream có bản vá sớm hơn, ưu tiên nâng cấp và chạy lại đầy đủ các kiểm tra liên quan. Nếu advisory đi vào runtime attack surface thực tế, dừng phần liên quan và đánh giá lại ngay.
+- Điều kiện đóng M7: khi không còn blocker khác, kết luận **PASS WITH ACCEPTED RISK**; các giới hạn kiểm tra trực quan/native device/production trong M7_FINAL.md vẫn được ghi nguyên trạng.
+- Ghi chú: tạo quyết định riêng cho M7, không sửa các DEC accepted-risk cũ; không tự merge PR #6 hoặc chuyển M8.
+
 ## 14. Milestone boundaries
 
 ### M0
