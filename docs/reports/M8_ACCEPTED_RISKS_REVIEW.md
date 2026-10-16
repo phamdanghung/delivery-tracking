@@ -1,6 +1,6 @@
 # M8 — Rà soát accepted risks M0–M7
 
-Ngày review: **16/10/2026**. Đây là rà soát, không phải quyết định phê duyệt rủi ro mới.
+Ngày review: **16/10/2026**; kiểm tra lại hai advisory upstream ngày **17/10/2026**, vẫn chưa có patched version. Đây là rà soát, không phải quyết định phê duyệt rủi ro mới.
 
 | Milestone | Quyết định | Phạm vi đã được phê duyệt | Còn áp dụng cho M8 / production? |
 |---|---|---|---|

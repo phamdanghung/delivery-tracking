@@ -123,13 +123,33 @@ def attempts_for(db: Connection, value: ReportPeriod) -> tuple[int, list[dict[st
             )
         ).mappings()
     ]
+    history_by_delivery: dict[Any, list[Any]] = {}
+    plans_by_trip: dict[Any, list[Any]] = {}
+    events_by_delivery: dict[Any, list[Any]] = {}
+    audits_by_delivery: dict[str, list[Any]] = {}
+    for historical in chronology:
+        history_by_delivery.setdefault(historical["delivery_id"], []).append(historical)
+    for plan in plans:
+        plans_by_trip.setdefault(plan["trip_id"], []).append(plan)
+    for event in events:
+        events_by_delivery.setdefault(event["delivery_id"], []).append(event)
+    for entry in audits:
+        audits_by_delivery.setdefault(str(entry["resource_id"]), []).append(entry)
     for row in rows:
-        history = [h for h in chronology if h["delivery_id"] == row["delivery_id"]]
+        history = history_by_delivery[row["delivery_id"]]
         same_time = [h for h in history if h["created_at"] == row["trip_created_at"]]
         row["ambiguous_attempt_history"] = len(same_time) != 1
         later = [h["created_at"] for h in history if h["created_at"] > row["trip_created_at"]]
         row["next_attempt_created_at"] = min(later) if later else None
-    return len(selected), [attempt_evidence(r, plans, events, audits) for r in rows]
+    return len(selected), [
+        attempt_evidence(
+            r,
+            plans_by_trip.get(r["trip_id"], []),
+            events_by_delivery.get(r["delivery_id"], []),
+            audits_by_delivery.get(str(r["delivery_id"]), []),
+        )
+        for r in rows
+    ]
 
 
 @router.get("/summary", response_model=ReportSummary)
@@ -263,9 +283,12 @@ def current_reconciliations(
         if rows
         else []
     )
+    latest: dict[Any, Any] = {}
+    for item in history:
+        latest.setdefault(item["reconciliation_id"], item)
     included, excluded = [], []
     for row in rows:
-        current = next((v for v in history if v["reconciliation_id"] == row["id"]), None)
+        current = latest.get(row["id"])
         reason = (
             "NOT_FINAL"
             if row["status"] != "FINAL"
