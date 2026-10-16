@@ -5,6 +5,7 @@ Neither canonical nor legacy is stopped or modified by this verification.
 
 import json
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -73,6 +74,11 @@ def run_drill() -> None:
                 and len(value) >= 4
             ]
             for line in log.read_text(errors="replace").splitlines():
+                location = re.search(
+                    r"(?:backup_restore|restore_probe|drill)\.py:\d+: in \w+", line
+                )
+                if location:
+                    print(location.group(0), flush=True)
                 if line.startswith(("E ", "FAILED ")):
                     for value in secrets_to_redact:
                         line = line.replace(value, "[REDACTED]")
@@ -195,7 +201,7 @@ def run_drill() -> None:
         raise
     finally:
         # Validate scope/ownership before Compose removes only this test project's resources.
-        for kind in ("container", "volume"):
+        for kind in ("container", "volume", "network"):
             for name in (
                 docker(
                     kind,

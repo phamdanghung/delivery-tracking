@@ -27,6 +27,8 @@ from app.main import JsonFormatter, logger
         "https://0x7f.0.0.1",
         "https://fleet.example.com:0",
         "https://fleet.example.com\n",
+        "https://fleet。internal",
+        "https://fleet．local",
     ],
 )
 def test_production_public_urls_reject_plaintext_local_credentials_and_wildcards(url):

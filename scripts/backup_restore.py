@@ -30,6 +30,17 @@ from app.config import Settings  # noqa: E402
 LABEL = "fleet.restore-drill"
 BACKUPS = root / "artifacts/backups"
 ARCHIVES = {"minio": "/data", "traccar": "/opt/traccar/data"}
+PROBE_STAGES = {
+    "IMPORTS",
+    "DATABASE",
+    "ASSET_METADATA",
+    "STORAGE_READY",
+    "STORAGE_PRIVATE_VERSIONING",
+    "OBJECT_BYTES_AND_VERSION",
+    "SIGNED_OBJECT_READ",
+    "TRACCAR_READY",
+    "TRACCAR_AUTH_AND_GPS",
+}
 
 
 def docker(*args: str, data: bytes | None = None, env=None, output=None) -> bytes:
@@ -46,7 +57,26 @@ def docker(*args: str, data: bytes | None = None, env=None, output=None) -> byte
         raise RuntimeError("Docker operation timed out; details withheld") from None
     if result.returncode:
         # Docker/SQL stderr may contain environment/configuration secrets.
-        raise RuntimeError("Docker operation failed; sensitive stderr withheld")
+        diagnostic = ""
+        for line in (
+            (result.stderr + b"\n" + (result.stdout or b"")).decode(errors="replace").splitlines()
+        ):
+            if line.startswith("M8_RESTORE_DIAGNOSTIC "):
+                try:
+                    details = json.loads(line.split(" ", 1)[1])
+                    stage, error_type = details["stage"], details["error_type"]
+                    if stage in PROBE_STAGES and re.fullmatch(r"[A-Za-z]{1,64}", error_type):
+                        diagnostic = f"; probe={stage}/{error_type}"
+                except (ValueError, KeyError, TypeError):
+                    pass
+        operation = args[0]
+        for command in ("pg_dump", "pg_restore", "pg_isready", "tar"):
+            if command in args:
+                operation += "/" + command
+        raise RuntimeError(
+            f"Docker operation failed ({operation}, exit={result.returncode}{diagnostic}); "
+            "sensitive stderr withheld"
+        )
     return result.stdout or b""
 
 

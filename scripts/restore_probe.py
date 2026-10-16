@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import sys
 import time
 from urllib.parse import quote
 
@@ -12,8 +13,12 @@ from botocore.config import Config
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import URL
 
+STAGE = "IMPORTS"
+
 
 def verify() -> dict:
+    global STAGE
+    STAGE = "DATABASE"
     expected = json.load(open("/manifest.json"))
     engine = create_engine(
         URL.create(
@@ -47,6 +52,7 @@ def verify() -> dict:
             assert head == expected["migration_head"]
             assert db.scalar(text("SELECT PostGIS_Version()"))
             for name in ("pod_photos", "expense_receipts", "vehicle_receipts"):
+                STAGE = "ASSET_METADATA"
                 assets.extend(
                     db.execute(text(f"SELECT object_key,object_version,sha256 FROM {name}"))
                     .mappings()
@@ -62,6 +68,7 @@ def verify() -> dict:
         config=Config(connect_timeout=3, read_timeout=10, retries={"max_attempts": 0}),
     )
     bucket = os.environ["RESTORE_BUCKET"]
+    STAGE = "STORAGE_READY"
     deadline = time.monotonic() + 90
     while True:
         try:
@@ -72,6 +79,7 @@ def verify() -> dict:
                 raise RuntimeError("Restored private storage did not become ready") from None
             time.sleep(1)
     try:
+        STAGE = "STORAGE_PRIVATE_VERSIONING"
         assert client.get_bucket_versioning(Bucket=bucket)["Status"] == "Enabled"
         with httpx.Client(timeout=10, trust_env=False) as web:
             assert (
@@ -79,6 +87,7 @@ def verify() -> dict:
                 == 403
             )
             for asset in assets:
+                STAGE = "OBJECT_BYTES_AND_VERSION"
                 anonymous = web.get(
                     f"http://{os.environ['RESTORE_MINIO']}:9000/{quote(bucket)}/"
                     + quote(asset["object_key"], safe="/"),
@@ -102,12 +111,14 @@ def verify() -> dict:
                     },
                     ExpiresIn=60,
                 )
+                STAGE = "SIGNED_OBJECT_READ"
                 response = web.get(signed)
                 assert (
                     response.status_code == 200
                     and hashlib.sha256(response.content).hexdigest() == asset["sha256"]
                 )
             traccar = "http://" + os.environ["RESTORE_TRACCAR"] + ":8082"
+            STAGE = "TRACCAR_READY"
             deadline = time.monotonic() + 120
             while True:
                 try:
@@ -119,6 +130,7 @@ def verify() -> dict:
                         raise RuntimeError("Restored Traccar did not become ready") from None
                     time.sleep(1)
             auth = (os.environ["RESTORE_TRACCAR_EMAIL"], os.environ["RESTORE_TRACCAR_PASSWORD"])
+            STAGE = "TRACCAR_AUTH_AND_GPS"
             devices = web.get(traccar + "/api/devices", auth=auth)
             devices.raise_for_status()
             positions = web.get(traccar + "/api/positions", auth=auth)
@@ -131,11 +143,13 @@ def verify() -> dict:
         "migration_head": head,
         "table_fingerprints_verified": len(actual_tables),
         "private_versioned_assets_verified": len(assets),
-        "original_object_version_ids_preserved": True,
-        "signed_read_after_restore": "PASS",
+        "original_object_version_ids_preserved": True if assets else None,
+        "signed_read_after_restore": "PASS" if assets else "NOT_EXERCISED_NO_ASSETS",
         "anonymous_storage_read": 403,
+        "anonymous_objects_tested": len(assets),
         "traccar_http": 200,
         "traccar_device_count": len(identities),
+        "traccar_latest_positions_count": len(position_ids),
         "traccar_device_identities_sha256": hashlib.sha256(
             json.dumps(identities).encode()
         ).hexdigest(),
@@ -146,4 +160,18 @@ def verify() -> dict:
 
 
 if __name__ == "__main__":
-    print(json.dumps(verify()))
+    try:
+        print(json.dumps(verify()))
+    except Exception as error:
+        # No exception message/traceback: these can contain URLs or credentials.
+        print(
+            "M8_RESTORE_DIAGNOSTIC "
+            + json.dumps(
+                {
+                    "stage": STAGE,
+                    "error_type": type(error).__name__,
+                }
+            ),
+            file=sys.stderr,
+        )
+        sys.exit(1)

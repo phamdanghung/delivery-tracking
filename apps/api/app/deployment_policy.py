@@ -13,6 +13,7 @@ def public_https(value: str, *, origin: bool = False) -> bool:
             return False
         url = urlsplit(value)
         host = (url.hostname or "").rstrip(".").lower()
+        host = host.encode("idna").decode("ascii").rstrip(".").lower()
         if (
             url.scheme != "https"
             or not host
@@ -32,7 +33,6 @@ def public_https(value: str, *, origin: bool = False) -> bool:
         try:
             return ip_address(host).is_global
         except ValueError:
-            host = host.encode("idna").decode("ascii")
             return (
                 "." in host
                 and re.fullmatch(r"[0-9.]+", host) is None

@@ -22,6 +22,8 @@ Raw npm audit đầu M8: **21 high affected-package findings**, từ hai advisor
 
 M7 web traces/native maps không tham chiếu packages advisory; đó là bằng chứng M7, không thay cho việc kiểm tra artifact/image M8 sau thay đổi. Tooling vẫn có trên build/dev/CI và web image cũ chứa toàn bộ workspace node_modules. M8 giảm runtime image bằng standalone; phải xác minh lại trước khi kết luận, không dùng việc giảm image để ẩn raw audit.
 
+Gate package paths/source maps và kiểm kê image không thay cho phân tích mọi đoạn code vendored/compiled hoặc vulnerability scan của OS/base image. Chưa có bằng chứng cho các phần đó thì không được suy ra toàn bộ runtime/production không còn lỗ hổng. Python audit cũng chỉ bao phủ lockfile Python đã kiểm tra.
+
 ## Các điều kiện vẫn phải giữ
 
 - Chỉ repo/config/cert tin cậy; Metro/Compose chỉ phạm vi cần thiết/loopback.

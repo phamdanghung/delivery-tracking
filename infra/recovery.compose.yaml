@@ -73,3 +73,5 @@ volumes:
   minio-data: {labels: *labels}
   traccar-data: {labels: *labels}
   traccar-logs: {labels: *labels}
+networks:
+  default: {labels: *labels}

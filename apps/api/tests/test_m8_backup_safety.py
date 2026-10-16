@@ -4,12 +4,32 @@ import json
 import sys
 import tarfile
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 root = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(root))
 from scripts import backup_restore as recovery  # noqa: E402
+
+
+@pytest.mark.parametrize("stage", ["OBJECT_BYTES_AND_VERSION", "private-password"])
+def test_docker_failure_exposes_only_safe_probe_stage_and_never_stderr_secrets(monkeypatch, stage):
+    stderr = (
+        b"private-password\nM8_RESTORE_DIAGNOSTIC "
+        + json.dumps({"stage": stage, "error_type": "ValueError"}).encode()
+    )
+    monkeypatch.setattr(
+        recovery.subprocess,
+        "run",
+        lambda *a, **k: SimpleNamespace(returncode=1, stderr=stderr, stdout=b"private-password"),
+    )
+    with pytest.raises(RuntimeError) as error:
+        recovery.docker("start", "-a", "owned-probe")
+    assert "private-password" not in str(error.value)
+    assert "exit=1" in str(error.value)
+    if stage == "OBJECT_BYTES_AND_VERSION":
+        assert "OBJECT_BYTES_AND_VERSION/ValueError" in str(error.value)
 
 
 @pytest.mark.parametrize(
