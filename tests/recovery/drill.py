@@ -82,7 +82,10 @@ def test_private_photo_database_audit_and_traccar_survive_actual_restore(context
             assert saved["complete"] is True
             result = restore_check(bundle)
         assert result["result"] == "PASS"
-        assert result["table_fingerprints_verified"] >= 70
+        manifest = json.loads((bundle / "manifest.json").read_text())
+        assert result["table_fingerprints_verified"] == len(manifest["tables"])
+        assert manifest["tables"]["pod_photos"]["rows"] == 1
+        assert manifest["tables"]["audit_logs"]["rows"] > 0
         assert result["private_versioned_assets_verified"] == 1
         assert result["original_object_version_ids_preserved"] is True
         assert result["anonymous_storage_read"] == 403

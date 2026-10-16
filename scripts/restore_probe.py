@@ -79,6 +79,12 @@ def verify() -> dict:
                 == 403
             )
             for asset in assets:
+                anonymous = web.get(
+                    f"http://{os.environ['RESTORE_MINIO']}:9000/{quote(bucket)}/"
+                    + quote(asset["object_key"], safe="/"),
+                    params={"versionId": asset["object_version"]},
+                )
+                assert anonymous.status_code == 403, "Restored object permits anonymous reads"
                 result = client.get_object(
                     Bucket=bucket, Key=asset["object_key"], VersionId=asset["object_version"]
                 )

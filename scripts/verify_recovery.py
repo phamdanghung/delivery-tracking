@@ -64,6 +64,19 @@ def run_drill() -> None:
                 timeout=timeout,
             )
         if result.returncode:
+            # CI must expose a useful failure without publishing the private
+            # bundle, request logs or randomly generated credentials.
+            secrets_to_redact = [
+                value
+                for key, value in environment.items()
+                if any(part in key for part in ("PASSWORD", "SECRET", "ACCESS_KEY", "DATABASE_URL"))
+                and len(value) >= 4
+            ]
+            for line in log.read_text(errors="replace").splitlines():
+                if line.startswith(("E ", "FAILED ")):
+                    for value in secrets_to_redact:
+                        line = line.replace(value, "[REDACTED]")
+                    print(line[:1000], flush=True)
             raise RuntimeError("Recovery verification failed; private diagnostic log: " + str(log))
 
     def endpoint(service: str, port: int) -> str:
