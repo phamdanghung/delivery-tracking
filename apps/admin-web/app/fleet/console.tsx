@@ -3,6 +3,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import DispatchWorkspace, { type DispatchView } from "../dispatch/workspace";
+import ReportsWorkspace from "../reports/workspace";
 import OperationsWorkspace, { type OperationsView } from "../operations/workspace";
 import {
   engineLabels,
@@ -106,12 +107,14 @@ export default function FleetConsole({
   dispatchView,
   entityId,
   operationsView,
+  reportsView,
 }: {
   view?: "live" | "vehicles" | "users" | "history" | "deliveries" | "trips";
   vehicleId?: string;
   dispatchView?: DispatchView;
   entityId?: string;
   operationsView?: OperationsView;
+  reportsView?: boolean;
 }) {
   const [user, setUser] = useState<User | null>(null),
     [loading, setLoading] = useState(true),
@@ -223,7 +226,7 @@ export default function FleetConsole({
           )}
           <a
             href="/fleet/live"
-            aria-current={!operationsView && view === "live" ? "page" : undefined}
+            aria-current={!operationsView && !reportsView && view === "live" ? "page" : undefined}
           >
             Bản đồ trực tiếp
           </a>
@@ -240,6 +243,7 @@ export default function FleetConsole({
               <Link href="/operations/maintenance" aria-current={operationsView === "maintenance" ? "page" : undefined}>Bảo dưỡng & giấy tờ</Link>
               <Link href="/operations/alerts" aria-current={operationsView === "alerts" ? "page" : undefined}>Cảnh báo an toàn</Link>
           </>}
+          {user.role === "ADMIN" && <Link href="/reports" aria-current={reportsView ? "page" : undefined}>Báo cáo</Link>}
           {user.role === "ADMIN" && (
             <a
               href="/admin/users"
@@ -280,6 +284,9 @@ export default function FleetConsole({
               Tài xế không được xem toàn bộ đội xe hoặc lịch sử xe.
             </p>
           </main>
+        ) : reportsView ? (
+          user.role === "ADMIN" ? <ReportsWorkspace api={api} onExpired={expire} /> :
+          <main><h1>Không có quyền truy cập</h1><p role="alert">Chỉ ADMIN được xem báo cáo.</p></main>
         ) : operationsView ? (
           <OperationsWorkspace api={api} role={user.role} view={operationsView} onExpired={expire} />
         ) : view === "deliveries" || view === "trips" ? (

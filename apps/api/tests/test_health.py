@@ -34,7 +34,7 @@ def test_readiness_checks_every_dependency(monkeypatch, failed):
     assert "password" not in response.text
 
 
-def test_only_authorized_m7_business_routes_are_exposed():
+def test_only_authorized_m8_business_routes_are_exposed():
     paths = app.openapi()["paths"]
     assert "/api/v1/vehicles" in paths
     assert "/api/v1/auth/login" in paths
@@ -45,7 +45,13 @@ def test_only_authorized_m7_business_routes_are_exposed():
     assert "/api/v1/maintenance/status" in paths
     assert "/api/v1/safety/alerts" in paths
     assert "/api/v1/expenses" in paths
-    assert not any(name in path for path in paths for name in ("immobiliz", "commands", "reports"))
+    assert "/api/v1/reports/summary" in paths
+    assert all(
+        set(methods) == {"get"}
+        for path, methods in paths.items()
+        if path.startswith("/api/v1/reports/")
+    )
+    assert not any(name in path for path in paths for name in ("immobiliz", "commands"))
     assert "/api/v1/public/tracking/{token}" in paths
     assert "/api/v1/tracking-links" in paths
     assert "/api/v1/deliveries/{delivery_id}/pod/photos" in paths

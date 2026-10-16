@@ -43,7 +43,9 @@ PROBE_STAGES = {
 }
 
 
-def docker(*args: str, data: bytes | None = None, env=None, output=None) -> bytes:
+def docker(
+    *args: str, data: bytes | None = None, env=None, output=None, private_errors: Path | None = None
+) -> bytes:
     try:
         result = subprocess.run(
             ["docker", *args],
@@ -56,6 +58,10 @@ def docker(*args: str, data: bytes | None = None, env=None, output=None) -> byte
     except subprocess.TimeoutExpired:
         raise RuntimeError("Docker operation timed out; details withheld") from None
     if result.returncode:
+        if private_errors is not None:
+            # Details stay in the already-private bundle, never CI console output.
+            private_errors.resolve().relative_to(BACKUPS.resolve())
+            private_errors.write_bytes(result.stderr)
         # Docker/SQL stderr may contain environment/configuration secrets.
         diagnostic = ""
         for line in (
@@ -437,6 +443,29 @@ def restore_check(path: Path) -> dict:
                 if time.monotonic() >= deadline:
                     raise
                 time.sleep(1)
+        # The PostGIS image initializes tiger/topology schemas in POSTGRES_DB.
+        # pg_dump already contains those schemas: restore into template0, not
+        # the image's pre-populated database. Only this UUID-owned target is touched.
+        owned("container", pg, identity)
+        if data["database"] in ("postgres", "template0", "template1"):
+            raise ValueError("Restore target cannot be a PostgreSQL system database")
+        docker(
+            "exec",
+            pg,
+            "dropdb",
+            "-U",
+            data["database_user"],
+            data["database"],
+        )
+        docker(
+            "exec",
+            pg,
+            "createdb",
+            "-U",
+            data["database_user"],
+            "--template=template0",
+            data["database"],
+        )
         with (path / "database.dump").open("rb") as source:
             docker(
                 "exec",
@@ -451,6 +480,7 @@ def restore_check(path: Path) -> dict:
                 "--no-owner",
                 "--no-privileges",
                 data=source.read(),
+                private_errors=path / (prefix + "-pg-restore.stderr"),
             )
         # Helper uses only this isolated network; no service ports are published.
         environment.update(

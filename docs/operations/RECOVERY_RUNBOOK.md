@@ -40,6 +40,10 @@ python scripts/verify_recovery.py
 
 Tạo source test `fleet-delivery-backup-test-<uuid>` riêng với PostgreSQL/MinIO/Traccar/API, ports loopback ngẫu nhiên. Tạo POD/GPS canary chỉ trong môi trường test; backup/restore/so dữ liệu thật, sau đó cleanup đúng source/target có ownership label. Không stop, seed hoặc thay canonical. Bằng chứng tổng hợp: `artifacts/m8-recovery-result.json`; diagnostics private dưới `artifacts/recovery` và backup bundles được giữ lại.
 
+## Database đích restore
+
+Image PostGIS khởi tạo sẵn schema tiger/topology. Restore tạo database từ template0 sau bootstrap, chỉ trong container UUID-owned mới; không restore đè database được image khởi tạo sẵn. Không đổi migration hoặc bỏ qua lỗi pg_restore. Lỗi chi tiết giữ riêng trong bundle private, không in SQL/secrets ra CI console.
+
 ## Sau can thiệp canonical
 
 ```text

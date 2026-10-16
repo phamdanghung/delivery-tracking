@@ -20,10 +20,10 @@ Trạng thái đang xác minh; không phải nghiệm thu cuối. Baseline M7: `
 | AT-14 Ngoài giờ | M7 safety boundaries/activity/exception/incident | M8 regression chờ |
 | AT-15 Bảo dưỡng từng xe | M7 maintenance rules/events/km/day/source tests | M8 regression chờ |
 | AT-16 Không remote immobilization | Contract/source review baseline | M8 rà soát cuối chờ |
-| WEB-13 Reporting | Phạm vi/KPI/RBAC chưa khóa đủ | **BLOCKED — chờ quyết định**, chưa tạo API/UI giả |
+| WEB-13 Reporting | DEC-051–055 đã chốt; API GET/Admin, KPI EARLY/ON_TIME/LATE/UNKNOWN, telemetry thực và tài chính tách nguồn đang triển khai | 25 policy tests PASS; DB/BFF/build/CI mới đang xác minh |
 | M8 API hardening/logging | 33 targeted tests PASS (`artifacts/m8-hardening-focused.log`) | Full regression/CI M8 chờ |
-| M8 DB/POD/Traccar restore | Bài thật đang chạy trên source/target cô lập | Chưa PASS đến khi so DB/ảnh/version/GPS và cleanup đạt |
-| M8 canonical runtime | Docker Engine khôi phục; 7 service healthy, head0009 ban đầu | Phải kiểm tra lại image M8/health cuối |
+| M8 DB/POD/Traccar restore | Canonical bundle restore vào target cô lập PASS: head0009, 70 fingerprint bảng khớp, cleanup PASS | Canonical không có ảnh/GPS; CI drill ảnh/version/GPS phải chạy lại sau sửa template0 |
+| M8 canonical runtime | Engine29.7.2 khôi phục lại 17/10; 7 service healthy, source volumes giữ nguyên | Chưa deploy reporting image mới; phải xác minh cuối |
 | M8 performance | M3 strict5s/M6 cached tracking p95<1s baseline | M8 regression + common API đo thực chờ; production load chưa xác minh |
 | M8 security audit | npm21high/2 advisory chưa vá; Python lock audit0 findings | M8 chưa có accepted-risk DEC; production không được chấp nhận theo DEC cũ |
 | UI / device UAT / final owner acceptance | Chưa có bằng chứng hoàn tất | **CHƯA XÁC MINH** |

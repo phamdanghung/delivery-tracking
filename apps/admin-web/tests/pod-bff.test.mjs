@@ -111,3 +111,47 @@ test("M7 BFF preserves staff auth, scoped read/write, CSRF and bounded private r
     await new Promise(resolve=>server.close(resolve));
   }
 });
+
+
+test("reporting BFF permits only exact authenticated GET paths and rejects mutations", async () => {
+  const seen = [];
+  const server = createServer((req, res) => {
+    seen.push(req.url);
+    res.setHeader("Content-Type", "application/json");
+    res.statusCode = req.headers.authorization === "Bearer admin" ? 200 : 403;
+    res.end(JSON.stringify({ items: [] }));
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const previous = process.env.API_URL;
+  process.env.API_URL = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const origin = moduleUrl(await readFile(new URL("../app/api/internal/origin.ts", import.meta.url), "utf8"));
+    const source = (await readFile(new URL("../app/api/internal/[...path]/route.ts", import.meta.url), "utf8"))
+      .replace('"next/server"', JSON.stringify(pathToFileURL(require.resolve("next/server")).href))
+      .replace('"../origin"', JSON.stringify(origin));
+    const handler = await import(moduleUrl(source + "\nexport const m8TransportInstance = 8;\n"));
+    const id = "11111111-1111-4111-8111-111111111111";
+    for (const path of ["reports/summary", "reports/attempts", "reports/financial", "reports/financial/sources", "reports/vehicles", `reports/vehicles/${id}/intervals`]) {
+      const invoke = (method, token = "admin") => handler[method](new NextRequest(`http://localhost/api/internal/${path}?date_from=2026-10-16&date_to=2026-10-16`, {
+        method, headers: { cookie: `fleet_access=${token}` },
+      }), { params: Promise.resolve({ path: path.split("/") }) });
+      const response = await invoke("GET");
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("cache-control"), "no-store");
+      assert.ok(seen.at(-1).endsWith("?date_from=2026-10-16&date_to=2026-10-16"));
+      assert.equal((await invoke("GET", "dispatcher")).status, 403);
+      const count = seen.length;
+      for (const method of ["POST", "PUT", "PATCH", "DELETE"]) assert.equal((await invoke(method)).status, 405);
+      assert.equal(seen.length, count);
+    }
+    const count = seen.length;
+    for (const path of ["reports/summary/private", "reports/export", "public/reports/summary"]) {
+      assert.equal((await handler.GET(new NextRequest(`http://localhost/api/internal/${path}`), { params: Promise.resolve({ path: path.split("/") }) })).status, 404);
+    }
+    assert.equal(seen.length, count);
+  } finally {
+    if (previous === undefined) delete process.env.API_URL; else process.env.API_URL = previous;
+    await new Promise(resolve => server.close(resolve));
+  }
+});

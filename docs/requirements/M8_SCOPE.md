@@ -9,13 +9,19 @@ Base: M7 merge `3cefe37fb8c9a334ed98579389662841202d6808`, branch `codex/m8-repo
 - Giữ raw audit/runtime gates; không force fix/downgrade/suppress, không tự mở rộng các accepted risks cũ sang M8/production.
 - Tái sử dụng module/tests đã PASS; targeted trước, full regression/build/Docker/CI khi chốt theo CODEX_TOKEN_RULES.md.
 
+## Reporting đã chốt
+
+- DEC-051: WEB-13, chỉ ADMIN, GET additive/OpenAPI; không mutation. Các nhóm mục 18 thiếu contract ghi deferred.
+- DEC-052/053: ARRIVED cuối cùng còn hiệu lực theo attempt, cam kết/lịch sử tương ứng; trip_date/timezone hệ thống. EARLY/ON_TIME/LATE riêng; eligible_attempts là tổng ba nhóm, tỷ lệ từng nhóm trên eligible_attempts; UNKNOWN riêng và loại khỏi mẫu số. Trace trip/delivery/attempt/commitment/event/correction.
+- DEC-054: giờ MOVING/IDLING và km Traccar thực đã xác minh; không nối gap, không dùng M3 thay thực tế. Chất lượng từng KPI VALID/PARTIAL/UNKNOWN, coverage và nguồn/interval truy vết được.
+- DEC-055: nhiên liệu theo filled_at M7 (ngày đổ), chi phí theo trip_date; tổng tiền hai nguồn riêng, chưa có grand total do thiếu quy tắc chống trùng. Đối soát FINAL/version hiện hành, không cộng lịch sử hoặc tự phân bổ kỳ.
+
 ## Đang chờ chủ dự án chốt — dừng đúng phần liên quan
 
-1. Reporting: các nhóm WEB-13 và các đề xuất thêm mục 18 Business Spec; RBAC ADMIN/DISPATCHER; cho phép GET/OpenAPI additive.
-2. Đúng giờ: ARRIVED hay DELIVERED, kỳ ngày kế hoạch hay ngày sự kiện, đơn hay attempt; cách xử lý thiếu lịch sử cam kết/correction. Không tự định nghĩa KPI hoặc dùng ETA thay thực tế.
-3. Vận hành production: deployment target/staging, retention, RPO/RTO. Chưa tự đặt thời hạn xóa backup/ảnh hoặc tuyên bố đạt SLA.
+1. Vận hành production: deployment target/staging, retention, RPO/RTO. Chưa tự đặt thời hạn xóa backup/ảnh hoặc tuyên bố đạt SLA.
+2. Các accepted risks M0–M7 chưa được phê duyệt cho M8 hoặc production; giữ raw audit và runtime gates.
 
-Ba câu hỏi đã gửi ngày 16/10/2026. Không ghi DEC cho đề xuất chưa được phê duyệt. Các phần Docker/security/restore cô lập/quan sát không phụ thuộc vẫn tiếp tục.
+Các câu hỏi reporting ngày 16/10/2026 đã được chủ dự án chốt bằng DEC-051 đến DEC-055. Không ghi DEC cho đề xuất chưa được phê duyệt; tiếp tục triển khai đúng phạm vi đã chốt.
 
 ## Hướng triển khai trong phạm vi đã rõ
 

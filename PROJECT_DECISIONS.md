@@ -461,6 +461,42 @@ Theo dõi:
 - Điều kiện đóng M7: khi không còn blocker khác, kết luận **PASS WITH ACCEPTED RISK**; các giới hạn kiểm tra trực quan/native device/production trong M7_FINAL.md vẫn được ghi nguyên trạng.
 - Ghi chú: tạo quyết định riêng cho M7, không sửa các DEC accepted-risk cũ; không tự merge PR #6 hoặc chuyển M8.
 
+### DEC-051 — Reporting WEB-13 và quyền đọc M8
+- Ngày chốt: 16/10/2026. Milestone: M8; bổ sung, không sửa các DEC cũ.
+- Chỉ triển khai WEB-13 có căn cứ rõ: tổng giờ vận hành; hiệu quả xe/km; nhiên liệu/chi phí; giao thất bại; các chỉ số đúng giờ/trễ đã khóa cho M8. Ưu tiên bảng + KPI theo UX/UI V1.0, không dashboard BI mới.
+- Chỉ ADMIN được xem. DISPATCHER, DRIVER và customer/public tracking không truy cập báo cáo M8; quyền kiểm tra ở backend, không chỉ ẩn menu.
+- Cho bổ sung GET reporting endpoint additive và đồng bộ OpenAPI/source; không phá contract cũ, không mutation endpoint reporting.
+- Các nhóm đề xuất thêm ở Business Spec mục 18 chưa có contract/quyền/công thức rõ phải ghi deferred/chưa đủ contract trong M8_FINAL.md; không tự suy đoán KPI/công thức hoặc tạo dữ liệu giả để lấp khoảng trống.
+
+### DEC-052 — KPI đúng giờ theo ARRIVED/attempt M8
+- Ngày chốt: 16/10/2026. Milestone: M8; không sửa DEC cũ hoặc workflow M2–M7.
+- Mốc tính là ARRIVED hợp lệ của từng delivery attempt, không DELIVERED. Loại event ARRIVED đã correction M4; chỉ dùng lần ARRIVED cuối cùng còn hiệu lực, truy vết được event/audit.
+- FIXED_TIME so với giờ hẹn và dung sai đã khóa; TIME_WINDOW yêu cầu ARRIVED trong cửa sổ hợp lệ; BEFORE_DEADLINE yêu cầu ARRIVED <= deadline. Không dùng dung sai hiện tại thay cho cam kết/lịch sử của attempt cũ.
+- Thiếu ARRIVED hợp lệ, trip_date, cam kết thời gian hoặc lịch sử/correction cần thiết: UNKNOWN; không suy đoán hoặc ép ON_TIME/LATE. UNKNOWN phải hiển thị riêng và không nằm trong mẫu số.
+- Công thức: on_time_rate = ON_TIME / (ON_TIME + LATE). Nhóm/lọc theo trip_date của chuyến, timezone chuẩn hệ thống, không ngày tạo đơn.
+- Đơn vị là từng attempt; FAILED/RESCHEDULED sang lượt mới đánh giá riêng, không gộp lượt để làm đẹp tỷ lệ.
+- Traceability bắt buộc: trip, delivery, attempt, commitment type/time/window/deadline, ARRIVED event được dùng, correction liên quan. Reporting không sửa event, cam kết hoặc audit lịch sử.
+
+### DEC-053 — Phân loại EARLY và mẫu số KPI M8
+- Ngày chốt: 16/10/2026. Bổ sung DEC-052; thay thế công thức hai nhóm của DEC-052, giữ nguyên lịch sử quyết định.
+- FIXED_TIME: trước cận dưới dung sai đã lưu là EARLY; trong khoảng inclusive là ON_TIME; sau cận trên là LATE. TIME_WINDOW áp dụng tương tự với window_start/window_end.
+- BEFORE_DEADLINE: ARRIVED <= deadline là ON_TIME, sau deadline là LATE; không có EARLY. Thiếu dữ liệu cần thiết là UNKNOWN.
+- eligible_attempts = EARLY + ON_TIME + LATE. on_time_rate, early_rate, late_rate lần lượt bằng số attempt của nhóm chia eligible_attempts. Mẫu số bằng 0 thì tỷ lệ chưa xác định; UNKNOWN hiển thị riêng và loại khỏi mẫu số.
+- Truy vết classification từng attempt, không gộp EARLY vào LATE; các quy tắc lịch sử/correction/trip_date của DEC-052 giữ nguyên.
+
+### DEC-054 — Giờ/km vận hành thực và chất lượng dữ liệu M8
+- Ngày chốt: 16/10/2026. Chỉ cộng interval telemetry GPS/ACC M1 đã xác minh thuộc MOVING hoặc IDLING; không PARKED/UNKNOWN, không kéo dài qua gap hoặc suy đoán khoảng thiếu.
+- Km thực từ Traccar qua kiểm tra chất lượng M7; không dùng km/thời gian kế hoạch M3, đường chim bay hoặc số ước tính để lấp gap.
+- Mỗi KPI phân biệt VALID / PARTIAL / UNKNOWN; chỉ cộng interval/km hợp lệ, không double-count, không ép PARTIAL/UNKNOWN thành 0. Ghi coverage/data quality và nhóm theo trip_date/khoảng báo cáo đã khóa.
+- Truy vết vehicle, khoảng thời gian, telemetry interval, nguồn GPS/ACC/km và coverage. Không thay đổi logic telemetry M1/M7.
+
+### DEC-055 — Kỳ reporting và chống double-count chi phí M8
+- Ngày chốt: 16/10/2026. Timezone chuẩn hệ thống. Nhiên liệu theo ngày đổ thực tế (`filled_at` của contract M7, tương ứng fueled_at trong yêu cầu); chi phí chuyến theo trip_date, không ngày tạo record. Không đổi tên field contract cũ.
+- Hiển thị riêng total_fuel_liters, total_fuel_cost, total_trip_expense; chỉ tổng hợp nguồn hợp lệ, loại record void/cancelled/invalid nếu contract nguồn có trạng thái đó. Không double-count fuel entry.
+- Chưa có contract đủ rõ để chứng minh fuel cost và expense không chồng nhau: không hiển thị grand total; ghi UNKNOWN/lý do “chưa đủ quy tắc chống trùng”. Không tự suy đoán category/source.
+- Chỉ dùng reconciliation FINAL/version hiện hành; lịch sử version giữ audit, không cộng lại. Không tự phân bổ tỷ lệ kỳ đối soát giao cắt; hiển thị lý do loại phần không nằm trọn kỳ.
+- Truy vết source table/record, ngày nghiệp vụ, vehicle/trip, reconciliation version, expense category/source và lý do exclude. Thiếu dữ liệu hoặc phân loại thì UNKNOWN/ẩn KPI tương ứng, không ép thành 0; báo data quality/coverage.
+
 ## 14. Milestone boundaries
 
 ### M0

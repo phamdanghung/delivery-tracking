@@ -23,6 +23,7 @@ from app import (
     gps,
     maintenance,
     pod,
+    reporting,
     routes,
     safety,
     tracking,
@@ -119,7 +120,7 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
 
 
 settings = get_settings()
-app = FastAPI(title="Fleet Delivery API — M7", version="1.7.0", lifespan=lifespan)
+app = FastAPI(title="Fleet Delivery API — M8", version="1.8.0", lifespan=lifespan)
 app.include_router(auth.router)
 app.include_router(fleet.router)
 app.include_router(gps.router)
@@ -135,6 +136,7 @@ app.include_router(safety.router)
 app.include_router(expenses.router)
 app.include_router(expense_receipts.router)
 app.include_router(vehicle_receipts.router)
+app.include_router(reporting.router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
