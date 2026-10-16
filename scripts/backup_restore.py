@@ -210,25 +210,28 @@ def backup(path: Path, database: str | None = None, project: str = "fleet-delive
                 output=output,
             )
         for service, volume in mounts.items():
-            docker(
-                "run",
-                "--rm",
-                "--network",
-                "none",
-                "--user",
-                "0",
-                "--mount",
-                f"type=volume,src={volume},dst=/source,readonly",
-                "--mount",
-                f"type=bind,src={path},dst=/backup",
-                helper,
-                "tar",
-                "-czf",
-                f"/backup/{service}.tar.gz",
-                "-C",
-                "/source",
-                ".",
-            )
+            # Stream to a caller-owned file. A root tar helper may otherwise
+            # create a mode-0600 root-owned archive unreadable by the CI runner.
+            # The private bundle directory retains its owner-only permissions.
+            with (path / f"{service}.tar.gz").open("xb") as output:
+                docker(
+                    "run",
+                    "--rm",
+                    "--network",
+                    "none",
+                    "--user",
+                    "0",
+                    "--mount",
+                    f"type=volume,src={volume},dst=/source,readonly",
+                    helper,
+                    "tar",
+                    "-czf",
+                    "-",
+                    "-C",
+                    "/source",
+                    ".",
+                    output=output,
+                )
         (path / "traccar.xml").write_bytes(config.read_bytes())
         manifest["files"] = {
             n: {"sha256": checksum(path / n), "size": (path / n).stat().st_size}

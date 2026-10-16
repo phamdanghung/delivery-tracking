@@ -18,6 +18,7 @@ Trạng thái: **chưa phê duyệt production**. `fleet-delivery-dev` là canon
 ## Giám sát và audit
 
 - JSON log có request ID, route template, status, duration; không log raw tracking token/query/body/header bí mật. Thu gom bền vững, hạn quyền truy cập và kiểm thử redaction ở ingress/reverse proxy nữa.
+- OSRM canonical chạy verbosity WARNING để không ghi INFO access URL chứa tọa độ tuyến. Log cũ vẫn được giữ; cần hạn quyền/retention phù hợp, không tự xóa log lịch sử.
 - `scripts/operational_review.py` đọc cấu hình/DB/log, báo riêng lỗi API, lỗi tối ưu/upload, trạng thái snapshot GPS và lag có mẫu. `--require-production-ready` trả lỗi khi chưa có bằng chứng readiness.
 - Driver outbox là dữ liệu thiết bị: log server không chứng minh backlog bằng 0. Cần cơ chế quan sát và quy trình hỗ trợ thiết bị được duyệt trước vận hành rộng.
 - Chốt alert routing/on-call, ngưỡng theo môi trường và retention log/audit; không tự đặt thời hạn xóa dữ liệu.

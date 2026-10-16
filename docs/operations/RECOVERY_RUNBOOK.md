@@ -15,6 +15,7 @@ python scripts/backup_restore.py backup --bundle artifacts/backups/manual-YYYYMM
 - Output phải là thư mục mới dưới `artifacts/backups`, ignored; owner-only ACL trên Windows hoặc mode 0700 trên Unix. Không commit/chia sẻ dump, credentials, GPS hoặc ảnh.
 - Script chỉ nhận canonical hoặc runtime recovery test UUID được giới hạn; từ chối legacy/unrelated source. Cần local `.env` đáng tin cậy và Docker Engine hoạt động.
 - Dừng API writes, Traccar và MinIO; dùng pg_dump custom format và cold archive MinIO/Traccar H2. Không sao chép H2/MinIO đang ghi. Lưu fingerprint dữ liệu/tables, migration head, image IDs, file hashes và manifest hoàn tất.
+- Trong maintenance window, dừng cả writer ngoài các container này (SQL console, script hoặc API khác nếu có). Adapter không khóa writer bên ngoài; fingerprint khác sau restore phải FAIL, không được xem backup là nhất quán chỉ vì pg_dump thành công.
 - Restart đúng các service đã dừng trong finally. Kiểm tra `restart_failures` và health sau backup; `docker start` thành công không tự chứng minh service đã ready.
 - Archive MinIO giữ backend metadata/version IDs, không upload lại bằng S3 PUT rồi giả định version ID cũ còn đúng. Audit và POD/receipt metadata phải khớp object version được restore.
 - Không tự xóa backup/ảnh theo tuổi; retention/RPO/RTO đang chờ chủ dự án chốt. Không mã hóa/offsite/PITR bằng giải pháp tự chọn rồi tuyên bố production đạt.
