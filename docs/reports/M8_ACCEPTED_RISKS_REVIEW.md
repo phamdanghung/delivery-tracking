@@ -20,7 +20,7 @@ Hai advisory chung:
 
 Raw npm audit đầu M8: **21 high affected-package findings**, từ hai advisory gốc; không phải 21 advisory độc lập. Bằng chứng `artifacts/m8-npm-audit-initial.json`; phân loại và dependency paths tham chiếu [M0_DEPENDENCY_SECURITY.md](M0_DEPENDENCY_SECURITY.md). Không sửa lockfiles/Expo/React Native hoặc coi advisory đã vá.
 
-M7 web traces/native maps không tham chiếu packages advisory; đó là bằng chứng M7, không thay cho việc kiểm tra artifact/image M8 sau thay đổi. Tooling vẫn có trên build/dev/CI và web image cũ chứa toàn bộ workspace node_modules. M8 giảm runtime image bằng standalone; phải xác minh lại trước khi kết luận, không dùng việc giảm image để ẩn raw audit.
+[CI M8 source 9d5afd3](https://github.com/phamdanghung/delivery-tracking/actions/runs/38979648260) xác minh web traces/native maps và final standalone image đều PASS runtime-surface gates. Image non-root kiểm kê67 packages, không phát hiện braces/node-forge/Expo/React Native/@expo/cli theo package-name gate. Tooling vẫn có trên build/dev/CI; raw audit vẫn FAIL21 high. Không dùng việc giảm runtime image để coi advisory đã vá hoặc ẩn audit.
 
 Gate package paths/source maps và kiểm kê image không thay cho phân tích mọi đoạn code vendored/compiled hoặc vulnerability scan của OS/base image. Chưa có bằng chứng cho các phần đó thì không được suy ra toàn bộ runtime/production không còn lỗ hổng. Python audit cũng chỉ bao phủ lockfile Python đã kiểm tra.
 
