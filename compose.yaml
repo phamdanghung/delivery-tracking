@@ -2,7 +2,7 @@ name: fleet-delivery-dev
 services:
   osrm:
     image: ghcr.io/project-osrm/osrm-backend:v6.0.0
-    command: ["osrm-routed", "--algorithm", "mld", "/data/map.osrm"]
+    command: ["osrm-routed", "--verbosity", "WARNING", "--algorithm", "mld", "/data/map.osrm"]
     ports: ["127.0.0.1:${OSRM_PORT:-5000}:5000"]
     volumes: ["./artifacts/osrm:/data:ro"]
     healthcheck:

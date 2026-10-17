@@ -1,0 +1,41 @@
+# M8 — Rà soát accepted risks M0–M7 và quyết định M8
+
+Ngày review: **16/10/2026**; kiểm tra lại hai advisory upstream ngày **17/10/2026**, vẫn chưa có patched version. Phê duyệt riêng M8 của chủ dự án được ghi tại **DEC-056 ngày 17/10/2026**; bảng M0–M7 giữ nguyên phạm vi lịch sử, không tự gia hạn các DEC cũ.
+
+| Milestone | Quyết định | Phạm vi đã được phê duyệt | Còn áp dụng cho M8 / production? |
+|---|---|---|---|
+| M0 | DEC-023 | Hai advisory, M0 development/local/CI | Không / Không |
+| M1 | DEC-024 | Hai advisory, M1 development/local/CI | Không / Không |
+| M2 | DEC-029 | Hai advisory, M2 development/local/CI | Không / Không |
+| M3 | DEC-033 | Hai advisory, M3 development/local/CI | Không / Không |
+| M4 | DEC-035 | Hai advisory, M4 development/local/CI | Không / Không |
+| M5 | DEC-040 | Hai advisory, M5 development/local/CI | Không / Không |
+| M6 | DEC-046 | Hai advisory, M6 development/local/CI | Không / Không |
+| M7 | DEC-050 | Hai advisory, M7 development/local/CI | Không / Không |
+| M8 | DEC-056 | Hai advisory, chỉ M8 development/local/CI | Có, đúng phạm vi DEC-056 / Không |
+
+Hai advisory chung:
+
+- [braces GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm): affected <=3.0.3, upstream ghi patched versions **None** tại ngày review.
+- [node-forge GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv): affected <=1.4.0, upstream ghi patched versions **None** tại ngày review.
+
+Raw npm audit đầu M8: **21 high affected-package findings**, từ hai advisory gốc; không phải 21 advisory độc lập. Bằng chứng `artifacts/m8-npm-audit-initial.json`; phân loại và dependency paths tham chiếu [M0_DEPENDENCY_SECURITY.md](M0_DEPENDENCY_SECURITY.md). Không sửa lockfiles/Expo/React Native hoặc coi advisory đã vá.
+
+[CI M8 source 9d5afd3](https://github.com/phamdanghung/delivery-tracking/actions/runs/38979648260) xác minh web traces/native maps và final standalone image đều PASS runtime-surface gates. Image non-root kiểm kê67 packages, không phát hiện braces/node-forge/Expo/React Native/@expo/cli theo package-name gate. Tooling vẫn có trên build/dev/CI; raw audit vẫn FAIL — 21 high. Không dùng việc giảm runtime image để coi advisory đã vá hoặc ẩn audit.
+
+Gate package paths/source maps và kiểm kê image không thay cho phân tích mọi đoạn code vendored/compiled hoặc vulnerability scan của OS/base image. Chưa có bằng chứng cho các phần đó thì không được suy ra toàn bộ runtime/production không còn lỗ hổng. Python audit cũng chỉ bao phủ lockfile Python đã kiểm tra.
+
+## Các điều kiện vẫn phải giữ
+
+- Chỉ repo/config/cert tin cậy; Metro/Compose chỉ phạm vi cần thiết/loopback.
+- Không `npm audit fix --force`; không downgrade Expo/React Native chỉ để audit về 0; không suppress/ẩn advisory; giữ raw audit và runtime-surface gates.
+- Review muộn nhất **02/11/2026 hoặc trước production**, mốc nào đến trước. Có patch upstream: ưu tiên nâng cấp/chạy lại đầy đủ kiểm tra liên quan. Có runtime exposure thực tế: dừng phần liên quan, đánh giá lại ngay.
+- M8 đã được chủ dự án chấp nhận tạm thời theo DEC-056; không tự gia hạn ngoài phạm vi đó hoặc cho production. Không coi đã vá hay bỏ qua production blockers/UAT/các giới hạn khác; kết quả raw audit vẫn FAIL — 21 high.
+
+## Các giới hạn trước đây phải xem lại ở final acceptance
+
+- UI trực quan/native device E2E/GPS ngoài đường chưa được nghiệm thu đầy đủ; M7 đã ghi rõ Computer Use bị dừng. Không đổi các ô này thành PASS chỉ vì API/build/CI đạt.
+- Cold startup/paging của host từng làm readiness và bài solver M3 không đạt. Sau ổn định đã có full local/CI PASS; không nới mục tiêu 5 giây hoặc đổi objective. Production cần đo trên môi trường tương ứng.
+- Legacy database/runtime chưa phục hồi; giữ PRESERVED, không production data. DEC-041 khóa canonical `fleet-delivery-dev`; việc test restore vào đích mới không thay canonical.
+- Harsh braking/out-of-area chưa được bật do thiếu contract/nguồn/ngưỡng theo DEC-048; remote immobilization bị loại theo DEC-021. Không tự mở rộng để “đủ” acceptance.
+- Production TLS, least-privilege DB/storage, secrets lifecycle, backup offsite/PITR/retention/scheduling, load/UAT và vận hành on-call cần bằng chứng riêng. Không có DEC accepted-risk nào ở trên miễn trừ các kiểm soát đó.

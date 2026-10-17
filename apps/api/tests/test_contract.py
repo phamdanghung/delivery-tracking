@@ -6,7 +6,7 @@ from app.main import app
 
 def test_current_contract_matches_source() -> None:
     root = Path(__file__).resolve().parents[3]
-    expected = json.loads((root / "openapi/m7.openapi.json").read_text(encoding="utf-8"))
+    expected = json.loads((root / "openapi/m8.openapi.json").read_text(encoding="utf-8"))
     assert app.openapi() == expected
 
 
@@ -119,3 +119,13 @@ def test_m4_commands_are_preserved_with_additive_pod_action() -> None:
             assert after["required"] == definition["required"]
         else:
             assert current["components"]["schemas"][name] == definition
+
+
+def test_m7_paths_and_schemas_remain_unchanged():
+    root = Path(__file__).resolve().parents[3]
+    baseline = json.loads((root / "openapi/m7.openapi.json").read_text(encoding="utf-8"))
+    current = app.openapi()
+    for name, definition in baseline["paths"].items():
+        assert current["paths"][name] == definition
+    for name, definition in baseline["components"]["schemas"].items():
+        assert current["components"]["schemas"][name] == definition

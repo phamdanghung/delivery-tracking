@@ -6,6 +6,7 @@ const api = process.env.API_URL || "http://127.0.0.1:8000";
 const routes =
   /^(auth\/(login|logout|me)|tracking-links(?:\/[0-9a-f-]+\/revoke)?|users(?:\/[0-9a-f-]+)?|vehicles(?:\/[0-9a-f-]+(?:\/(live|history|odometer))?)?|drivers(?:\/[0-9a-f-]+)?|gps\/devices|routing\/config|deliveries(?:\/[0-9a-f-]+(?:\/(status|reschedule|arrival-correction|pod\/photos(?:\/[0-9a-f-]+\/url)?))?)?|trips(?:\/(config|[0-9a-f-]+(?:\/(optimize|optimization|approve))?))?)$/;
 const operations = /^(fuel\/(profiles(?:\/[0-9a-f-]+)?|entries(?:\/[0-9a-f-]+(?:\/(void|receipt-url))?)?|reconciliations(?:\/[0-9a-f-]+\/(recompute|finalize))?)|expenses(?:\/[0-9a-f-]+(?:\/receipt-url)?)?|maintenance\/(rules(?:\/[0-9a-f-]+)?|events(?:\/[0-9a-f-]+\/receipt-url)?|odometer-readings|status)|vehicle-documents(?:\/[0-9a-f-]+)?|safety\/(configs(?:\/[0-9a-f-]+)?|exceptions(?:\/[0-9a-f-]+(?:\/void)?)?|alerts(?:\/[0-9a-f-]+\/state)?)|expense-receipts|vehicle-receipts)$/;
+const reporting = /^reports\/(summary|attempts|financial(?:\/sources)?|vehicles(?:\/[0-9a-f-]+\/intervals)?)$/;
 type Tokens = {
   access_token: string;
   refresh_token: string;
@@ -38,8 +39,10 @@ async function handle(
   context: { params: Promise<{ path: string[] }> },
 ) {
   const route = (await context.params).path.join("/");
+  if (reporting.test(route) && request.method !== "GET")
+    return NextResponse.json({ detail: "Báo cáo chỉ hỗ trợ đọc" }, { status: 405 });
   const binary = (route === "expense-receipts" || route === "vehicle-receipts");
-  if ((!routes.test(route) && !operations.test(route)) || (route.includes("/pod/") && request.method !== "GET") || (binary && request.method !== "POST"))
+  if ((!routes.test(route) && !operations.test(route) && !reporting.test(route)) || (route.includes("/pod/") && request.method !== "GET") || (binary && request.method !== "POST"))
     return NextResponse.json({ detail: "Không tìm thấy API" }, { status: 404 });
   if (
     request.method !== "GET" &&

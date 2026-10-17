@@ -3,7 +3,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /workspace
 COPY apps/api/requirements.lock apps/api/requirements.lock
 RUN pip install --no-cache-dir -r apps/api/requirements.lock
-COPY apps/api apps/api
+COPY apps/api/app apps/api/app
+COPY apps/api/migrations apps/api/migrations
+COPY apps/api/alembic.ini apps/api/alembic.ini
 COPY db db
 RUN useradd --uid 10001 --create-home fleet
 USER fleet
