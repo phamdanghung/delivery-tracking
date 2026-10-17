@@ -4,9 +4,11 @@ Ngày: **17/10/2026**. Source: `9d5afd3fd290256ae01210918181af9e313926e3`, branc
 
 ## 1. Kết luận hiện tại
 
-**M8: FAIL — chưa được đóng. Production: CHƯA ĐỦ BẰNG CHỨNG / không production-ready.**
+**M8: PASS WITH CONDITIONS — chỉ phạm vi development/local/CI. Nghiệm thu tổng thể và production: CHƯA ĐỦ BẰNG CHỨNG / không production-ready.**
 
-Các kiểm tra chức năng CI, targeted Windows và canonical smoke đã PASS; raw npm audit vẫn FAIL và chưa có DEC accepted-risk riêng cho M8. Không mở rộng DEC-050 hoặc các quyết định M0–M6. UI/UAT, thiết bị thật và các production gates bên dưới vẫn chưa được nghiệm thu.
+Các kiểm tra chức năng CI, targeted Windows và canonical smoke đã PASS. Chủ dự án phê duyệt riêng hai advisory cho M8 development/local/CI theo **DEC-056**; raw npm audit vẫn FAIL và advisory chưa được vá. Không mở rộng các DEC accepted-risk cũ hoặc áp dụng approval này cho production.
+
+Điều kiện còn mở: hoàn tất các mục UAT/chưa xác minh trong acceptance matrix; tiếp tục xử lý các giới hạn Docker/local DB ở mục 5; đáp ứng production blockers ở mục 7 trước release. Những mục này chưa được nghiệm thu hoặc miễn trừ bởi DEC-056. Kết luận có điều kiện không phải PASS vô điều kiện hay xác nhận đủ điều kiện đóng nghiệm thu tổng thể.
 
 ## 2. Phần đã triển khai
 
@@ -22,7 +24,7 @@ Không có migration M8; head vẫn **0009**, không sửa lịch sử 0001–00
 
 `summary`, `attempts`, `vehicles`, `vehicles/{vehicle_id}/intervals`, `financial`, `financial/sources`.
 
-Nguồn chính: `apps/api/app/reporting*.py`, `deployment_policy.py`, `operational_metrics.py`, `apps/admin-web/app/reports/`, BFF và FleetConsole, `infra/docker/{api,web}.Dockerfile`, `scripts/{backup_restore,restore_probe,verify_recovery,operational_review}.py`, `tests/recovery/drill.py`, các test M8 và `openapi/m8.openapi.json`. Quyết định mới: DEC-051–055; không sửa DEC cũ.
+Nguồn chính: `apps/api/app/reporting*.py`, `deployment_policy.py`, `operational_metrics.py`, `apps/admin-web/app/reports/`, BFF và FleetConsole, `infra/docker/{api,web}.Dockerfile`, `scripts/{backup_restore,restore_probe,verify_recovery,operational_review}.py`, `tests/recovery/drill.py`, các test M8 và `openapi/m8.openapi.json`. Quyết định mới: DEC-051–055 về reporting và DEC-056 về accepted risk M8; không sửa DEC cũ.
 
 ## 4. Test/build/CI thực tế
 
@@ -40,6 +42,8 @@ Nguồn chính: `apps/api/app/reporting*.py`, `deployment_policy.py`, `operation
 | Python locked-runtime audit | PASS — không phát hiện vulnerability đã biết |
 | Raw npm audit | **FAIL — 21 high affected-package findings**, hai advisory gốc chưa vá |
 | Backend job / frontend job / toàn workflow | **PASS / FAIL tại raw audit / FAIL** |
+
+DEC-056 là quyết định chấp nhận rủi ro giới hạn, không đổi các kết quả FAIL trong bảng thành PASS; giữ nguyên raw audit và gates trong workflow. Cập nhật lần này chỉ sửa tài liệu, tái sử dụng bằng chứng source `9d5afd3` theo CODEX_TOKEN_RULES.md; không chạy lại toàn bộ test/build chỉ vì ghi nhận approval.
 
 Không dùng local test thay CI remote. Bằng chứng local bổ sung: 37 test policy/telemetry PASS; 13 reporting/contract tests PASS trên PostgreSQL thật ngày17/10 sau khi chạy tuần tự; 3 BFF transport test PASS; build web/API và final-image gate PASS. Các lần local lỗi hạ tầng vẫn giữ trong artifacts, không đổi thành PASS.
 
@@ -62,7 +66,7 @@ Operational review thực tế vẫn trả `production_ready=false`: DB kết n�
 
 ## 7. Production blockers và rủi ro còn lại
 
-1. Hai advisory chưa vá, chưa có approval M8; mọi approval M0–M7 đều chỉ cho development/local/CI của milestone tương ứng. Chi tiết attack surface/giới hạn: [M8_ACCEPTED_RISKS_REVIEW.md](M8_ACCEPTED_RISKS_REVIEW.md). Review muộn nhất **02/11/2026 hoặc trước production**; upstream patch/runtime exposure phải đánh giá lại ngay.
+1. Hai advisory **chưa vá và vẫn chặn production**. DEC-056 chỉ chấp nhận tạm thời M8 development/local/CI; mọi approval M0–M7 vẫn chỉ cho milestone tương ứng, không áp dụng production. Chi tiết attack surface/giới hạn: [M8_ACCEPTED_RISKS_REVIEW.md](M8_ACCEPTED_RISKS_REVIEW.md). Review muộn nhất **02/11/2026 hoặc trước production**; upstream patch/runtime exposure phải đánh giá lại ngay.
 2. Chưa chốt/kiểm chứng deployment target/staging, domain/TLS/firewall, secrets rotation, DB/storage least privilege và hạn quyền sửa audit. Cấu hình local hiện dùng DB role có quyền cao, không chứng minh production an toàn.
 3. Chưa có backup production encrypted/offsite/immutable, daily scheduler/PITR theo provider, retention và RPO/RTO được duyệt/đo thực. Local H2/volume drill không thay rehearsal trên hạ tầng đích.
 4. Chưa hoàn tất UI trực quan/UAT, thiết bị Android/iOS/GPS ngoài đường, tải/soak đại diện, log/alert routing/on-call và owner final acceptance. Không tự tiếp tục Computer Use đã bị dừng trước đó.
@@ -73,7 +77,7 @@ Quy trình trước production: [PRODUCTION_READINESS.md](../operations/PRODUCTI
 ## 8. Deferred và quyết định cần chủ dự án
 
 - Reporting Business Spec mục18 ngoài WEB-13: deferred/chưa đủ contract/quyền/công thức; không tự thêm KPI/dữ liệu giả. Harsh braking/out-of-area vẫn theo DEC-048; không remote immobilization.
-- Cần quyết định accepted-risk riêng cho M8 nếu chủ dự án muốn tiếp tục nghiệm thu development/local/CI với hai advisory còn tồn tại. Không được xem là đã vá hoặc cho production.
+- Đã có quyết định accepted-risk riêng **DEC-056** cho hai advisory M8 development/local/CI, review muộn nhất **02/11/2026 hoặc trước production**. Không được xem là đã vá, cho production, hoặc chấp nhận các blocker/giới hạn khác.
 - Cần chốt hạ tầng/SLA/retention và kế hoạch UAT/thiết bị/nghiệm thu trước release. Không tự merge, deploy production hoặc mở rộng milestone.
 
 ## 9. Chạy kiểm tra lại khi có thay đổi liên quan

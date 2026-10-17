@@ -25,8 +25,10 @@ Source M8 `9d5afd3fd290256ae01210918181af9e313926e3`; [CI thực tế 3897964826
 | M8 DB/POD/Traccar restore | Canonical bundle restore PASS: head0009, 70 fingerprint, cleanup; CI drill có POD/GPS thật | **PASS local/CI**: 1 ảnh private/version gốc/signed read/anonymous403, 1 GPS device/position; không phải production rehearsal/RTO |
 | M8 canonical runtime | Engine29.7.2 và 7 service healthy với image M8; head0009, legacy giữ nguyên | **PASS canonical**: PostGIS3.5.2/head0009; live/ready; Redis; MinIO private/versioning; Traccar/OSRM; bootstrap/login/BFF reporting; business tables0. IPC workaround và local DB incident chưa có root-cause fix triệt để |
 | M8 performance | M3 strict5s/M6 cached tracking p95<1s trong regression M8 PASS | 3 warm read API p95 **5.279/6.804/7.815ms**, 10 mẫu/route trên DB rỗng; historical readiness p95 **1103ms**. Production load/GPS end-to-end chưa xác minh |
-| M8 security audit | npm21high/2 advisory chưa vá; Python lock audit0 findings | **FAIL raw npm audit**; M8 chưa có accepted-risk DEC, không áp dụng DEC cũ cho production |
+| M8 security audit | npm21high/2 advisory chưa vá; Python lock audit0 findings | **FAIL raw npm audit**; DEC-056 chấp nhận riêng M8 development/local/CI, chưa vá và không áp dụng production |
 | UI / device UAT / final owner acceptance | Chưa có bằng chứng hoàn tất | **CHƯA XÁC MINH** |
 | Production readiness | Review cấu hình local cho thấy blockers | **CHƯA ĐẠT**; xem `../operations/PRODUCTION_READINESS.md` |
+
+Kết luận M8 **PASS WITH CONDITIONS** chỉ cho development/local/CI theo bằng chứng và DEC-056. Các mục UAT/chưa xác minh/production chưa đạt trong bảng giữ nguyên; raw audit/frontend job/workflow vẫn FAIL.
 
 Không dùng PASS của một dòng để thay thế bằng chứng của dòng khác. Chi tiết trạng thái/run/commit trong [M8_FINAL.md](M8_FINAL.md).

@@ -497,6 +497,14 @@ Theo dõi:
 - Chỉ dùng reconciliation FINAL/version hiện hành; lịch sử version giữ audit, không cộng lại. Không tự phân bổ tỷ lệ kỳ đối soát giao cắt; hiển thị lý do loại phần không nằm trọn kỳ.
 - Truy vết source table/record, ngày nghiệp vụ, vehicle/trip, reconciliation version, expense category/source và lý do exclude. Thiếu dữ liệu hoặc phân loại thì UNKNOWN/ẩn KPI tương ứng, không ép thành 0; báo data quality/coverage.
 
+### DEC-056 — Accepted Risk cho M8 development/local/CI
+- Ngày chốt: 17/10/2026. Milestone liên quan: chỉ M8 development/local/CI.
+- Quyết định của chủ dự án: chấp nhận tạm thời `braces GHSA-vfj7-8cjw-p6xm` và `node-forge GHSA-86w9-cpqp-85rv`. Không áp dụng production, không coi advisory đã được vá; không bỏ qua production blockers, UAT hoặc bất kỳ giới hạn nào trong M8_FINAL.md.
+- Điều kiện giữ nguyên: chỉ repo/config/cert đáng tin cậy; Metro/Compose chỉ expose phạm vi cần thiết/loopback; không `npm audit fix --force`; không downgrade Expo/React Native chỉ để audit về 0; không suppress/ẩn advisory; tiếp tục giữ raw npm audit và runtime-surface gates trong CI/report.
+- Theo dõi: review muộn nhất **02/11/2026 hoặc trước production**, mốc nào đến trước. Nếu upstream có bản vá sớm hơn, ưu tiên nâng cấp và chạy lại đầy đủ các kiểm tra liên quan. Nếu advisory đi vào runtime attack surface thực tế, dừng phần liên quan và đánh giá lại ngay.
+- Không sửa các DEC accepted-risk cũ. Raw audit/frontend job/toàn workflow đang FAIL vẫn ghi đúng FAIL; quyết định này không làm thay đổi kết quả kiểm tra.
+- Kết luận M8 phải dựa trên toàn bộ bằng chứng và blocker còn lại, theo PASS / FAIL / PASS WITH CONDITIONS. Quyết định này chỉ xử lý chấp nhận hai advisory trong phạm vi nêu trên; giữ nguyên mọi mục UAT/chưa xác minh/production readiness chưa đạt, không tự tuyên bố production-ready.
+
 ## 14. Milestone boundaries
 
 ### M0

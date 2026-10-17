@@ -7,6 +7,7 @@ Base: M7 merge `3cefe37fb8c9a334ed98579389662841202d6808`, branch `codex/m8-repo
 - Reporting WEB-13; security hardening; performance; backup/restore; logging/audit/monitoring; regression toàn hệ thống; acceptance matrix; production readiness review/runbook.
 - Áp dụng Technical Pack 07/08/09, UX/UI V1.0 và các DEC M0–M7. Production PASS cần bằng chứng riêng; không suy ra từ local/CI.
 - Giữ raw audit/runtime gates; không force fix/downgrade/suppress, không tự mở rộng các accepted risks cũ sang M8/production.
+- DEC-056 chấp nhận riêng hai advisory cho M8 development/local/CI; không production/không coi đã vá, giữ raw audit và runtime gates cùng mọi giới hạn UAT/production. Review muộn nhất 02/11/2026 hoặc trước production; patch/runtime exposure phải đánh giá lại.
 - Tái sử dụng module/tests đã PASS; targeted trước, full regression/build/Docker/CI khi chốt theo CODEX_TOKEN_RULES.md.
 
 ## Reporting đã chốt
@@ -19,7 +20,6 @@ Base: M7 merge `3cefe37fb8c9a334ed98579389662841202d6808`, branch `codex/m8-repo
 ## Đang chờ chủ dự án chốt — dừng đúng phần liên quan
 
 1. Vận hành production: deployment target/staging, retention, RPO/RTO. Chưa tự đặt thời hạn xóa backup/ảnh hoặc tuyên bố đạt SLA.
-2. Các accepted risks M0–M7 chưa được phê duyệt cho M8 hoặc production; giữ raw audit và runtime gates.
 
 Các câu hỏi reporting ngày 16/10/2026 đã được chủ dự án chốt bằng DEC-051 đến DEC-055. Không ghi DEC cho đề xuất chưa được phê duyệt; tiếp tục triển khai đúng phạm vi đã chốt.
 
